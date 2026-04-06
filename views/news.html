@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>News Feed - metropages</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -10,10 +10,6 @@
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateX(-50px); }
-            to { opacity: 1; transform: translateX(0); }
         }
         .news-card {
             animation: fadeIn 0.5s ease-out;
@@ -27,21 +23,11 @@
         .category-badge {
             transition: all 0.3s ease;
         }
-        .category-badge:hover {
-            transform: scale(1.05);
-        }
         .like-button {
             transition: all 0.2s ease;
         }
-        .like-button:hover {
-            transform: scale(1.1);
-        }
         .modal {
             transition: all 0.3s ease;
-            backdrop-filter: blur(4px);
-        }
-        .modal-content {
-            animation: slideIn 0.3s ease-out;
         }
         .line-clamp-2 {
             display: -webkit-box;
@@ -55,25 +41,53 @@
             -webkit-box-orient: vertical;
             overflow: hidden;
         }
+        /* Mobile menu styles */
+        .mobile-menu-open {
+            overflow: hidden;
+        }
     </style>
 </head>
 <body class="bg-gradient-to-br from-slate-50 to-slate-100">
+    <!-- Mobile Menu Overlay -->
+    <div id="mobileOverlay" class="fixed inset-0 bg-black/50 z-40 hidden" onclick="closeMobileMenu()"></div>
+    
+    <!-- Mobile Sidebar -->
+    <div id="mobileSidebar" class="fixed top-0 left-0 w-64 h-full bg-white z-50 transform -translate-x-full transition-transform duration-300 ease-in-out shadow-xl">
+        <div class="p-4 border-b border-slate-100">
+            <div class="flex justify-between items-center">
+                <h1 class="metro-brand text-2xl text-[#1d9bf0]">metropages</h1>
+                <button onclick="closeMobileMenu()" class="text-slate-500 text-2xl">&times;</button>
+            </div>
+        </div>
+        <div class="p-4">
+            <a href="/" class="block py-3 px-2 hover:bg-slate-100 rounded-lg transition">🏠 Home</a>
+            <a href="/news" class="block py-3 px-2 bg-slate-100 text-[#1d9bf0] rounded-lg transition">📰 News Feed</a>
+            <a href="/profile" class="block py-3 px-2 hover:bg-slate-100 rounded-lg transition">👤 Profile</a>
+            {{if .IsAdmin}}
+            <a href="/admin" class="block py-3 px-2 hover:bg-slate-100 rounded-lg transition text-amber-600">👑 Admin Dashboard</a>
+            {{end}}
+        </div>
+    </div>
+
     <!-- Header -->
-    <div class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
-        <div class="max-w-7xl mx-auto px-6 py-4">
-            <div class="flex justify-between items-center flex-wrap gap-4">
-                <div>
-                    <h1 class="metro-brand text-3xl text-[#1d9bf0]">metropages</h1>
-                    <p class="text-slate-500 text-sm mt-1">Latest News & Updates</p>
+    <div class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 py-3">
+            <div class="flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <button onclick="toggleMobileMenu()" class="lg:hidden text-slate-600 text-2xl">☰</button>
+                    <div>
+                        <h1 class="metro-brand text-2xl text-[#1d9bf0]">metropages</h1>
+                        <p class="text-slate-500 text-xs hidden sm:block">Latest News & Updates</p>
+                    </div>
                 </div>
-                <div class="flex gap-3">
-                    <a href="/" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2 rounded-full transition flex items-center gap-2 text-sm font-medium">
-                        <span>🏠</span> Back to Home
+                <div class="flex gap-2">
+                    <a href="/" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-full transition flex items-center gap-1 text-sm">
+                        <span>🏠</span> <span class="hidden sm:inline">Back</span>
                     </a>
                     {{if .IsAdmin}}
                     <button onclick="openAddNewsModal()" 
-                            class="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white px-5 py-2 rounded-full transition flex items-center gap-2 text-sm font-medium shadow-md">
-                        <span>➕</span> Add News
+                            class="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white px-3 py-1.5 rounded-full transition flex items-center gap-1 text-sm shadow-md">
+                        <span>➕</span> <span class="hidden sm:inline">Add News</span>
                     </button>
                     {{end}}
                 </div>
@@ -81,96 +95,91 @@
         </div>
     </div>
 
-    <div class="max-w-7xl mx-auto px-6 py-8">
-        <!-- Filter Bar -->
-        <div class="mb-8 flex flex-wrap gap-3 justify-between items-center">
-            <div class="flex gap-3 flex-wrap">
+    <div class="max-w-7xl mx-auto px-4 py-4 sm:py-6">
+        <!-- Filter Bar - Mobile Friendly -->
+        <div class="mb-6 flex flex-wrap gap-2 justify-between items-center">
+            <div class="flex gap-2 flex-wrap">
                 <button onclick="filterNews('all')" id="filter-all" 
-                        class="px-5 py-2 rounded-full bg-[#1d9bf0] text-white font-semibold text-sm transition shadow-sm">
-                    All News
+                        class="px-3 py-1.5 rounded-full bg-[#1d9bf0] text-white font-semibold text-xs transition shadow-sm">
+                    All
                 </button>
                 <button onclick="filterNews('real-estate')" id="filter-real-estate" 
-                        class="px-5 py-2 rounded-full bg-white text-slate-700 hover:bg-slate-100 font-semibold text-sm transition border border-slate-200">
+                        class="px-3 py-1.5 rounded-full bg-white text-slate-700 hover:bg-slate-100 font-semibold text-xs transition border border-slate-200">
                     🏠 Real Estate
                 </button>
                 <button onclick="filterNews('gig')" id="filter-gig" 
-                        class="px-5 py-2 rounded-full bg-white text-slate-700 hover:bg-slate-100 font-semibold text-sm transition border border-slate-200">
-                    💼 Gig Economy
+                        class="px-3 py-1.5 rounded-full bg-white text-slate-700 hover:bg-slate-100 font-semibold text-xs transition border border-slate-200">
+                    💼 Gig
                 </button>
             </div>
-            <div class="text-sm text-slate-500 bg-white px-4 py-2 rounded-full shadow-sm">
-                📰 <span id="news-count">{{len .News}}</span> articles available
+            <div class="text-xs text-slate-500 bg-white px-2 py-1 rounded-full shadow-sm">
+                📰 <span id="news-count">{{len .News}}</span>
             </div>
         </div>
 
-        <!-- News Grid -->
-        <div id="news-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- News Grid - Responsive -->
+        <div id="news-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {{range .News}}
-            <div class="news-card bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-slate-100 group" data-category="{{.Category}}" data-id="{{.ID}}">
-                <!-- Category Header -->
-                <div class="h-2 {{if eq .Category "real-estate"}}bg-gradient-to-r from-blue-500 to-purple-600{{else}}bg-gradient-to-r from-emerald-500 to-teal-600{{end}}"></div>
+            <div class="news-card bg-white rounded-xl sm:rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-slate-100 group" data-category="{{.Category}}" data-id="{{.ID}}">
+                <div class="h-1.5 {{if eq .Category "real-estate"}}bg-gradient-to-r from-blue-500 to-purple-600{{else}}bg-gradient-to-r from-emerald-500 to-teal-600{{end}}"></div>
                 
-                <div class="p-6">
-                    <!-- Category Badge & Admin Actions -->
-                    <div class="flex justify-between items-start mb-4">
-                        <span class="category-badge inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold 
+                <div class="p-4 sm:p-5">
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="category-badge inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold 
                             {{if eq .Category "real-estate"}}bg-blue-100 text-blue-700{{else}}bg-emerald-100 text-emerald-700{{end}}">
                             {{if eq .Category "real-estate"}}🏠 Real Estate{{else}}💼 Gig Economy{{end}}
                         </span>
                         
                         {{if $.IsAdmin}}
-                        <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                           <button onclick="editNews({{.ID}}, '{{.Title | js}}', '{{.Content | js}}', '{{.Category | js}}')" 
-        class="text-blue-500 hover:text-blue-700 text-xs font-semibold bg-blue-50 px-2 py-1 rounded-lg">
-    ✏️ Edit
-</button>
+                        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="editNews({{.ID}}, '{{.Title}}', ` + "`{{.Content}}`" + `, '{{.Category}}')" 
+                                    class="text-blue-500 hover:text-blue-700 text-xs font-semibold bg-blue-50 px-2 py-1 rounded-lg">
+                                ✏️ Edit
+                            </button>
                             <button onclick="deleteNews({{.ID}})" 
                                     class="text-red-500 hover:text-red-700 text-xs font-semibold bg-red-50 px-2 py-1 rounded-lg">
-                                🗑️ Delete
+                                🗑️ Del
                             </button>
                         </div>
                         {{end}}
                     </div>
 
-                    <!-- Title -->
-                    <h2 class="text-xl font-bold text-slate-900 mb-3 line-clamp-2 leading-tight group-hover:text-[#1d9bf0] transition-colors">
+                    <h2 class="text-lg sm:text-xl font-bold text-slate-900 mb-2 line-clamp-2 leading-tight group-hover:text-[#1d9bf0] transition-colors">
                         {{.Title}}
                     </h2>
 
-                    <!-- Content -->
-                    <p class="text-slate-600 leading-relaxed mb-4 line-clamp-3">
+                    <p class="text-slate-600 text-sm leading-relaxed mb-3 line-clamp-3">
                         {{.Content}}
                     </p>
 
-                    <!-- Footer -->
-                    <div class="flex items-center justify-between pt-4 border-t border-slate-100">
-                        <div class="flex items-center gap-2 text-sm text-slate-400">
+                    <div class="flex items-center justify-between pt-3 border-t border-slate-100">
+                        <div class="flex items-center gap-1 text-xs text-slate-400">
                             <span>🕒</span>
                             <span>{{.Timestamp}}</span>
                         </div>
                         <button onclick="likeNews({{.ID}}, this)" 
-                                class="like-button flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 hover:bg-red-50 text-slate-500 hover:text-red-500 transition-all">
-                            ❤️ <span class="text-sm font-semibold like-count">{{.Likes}}</span>
+                                class="like-button flex items-center gap-1 px-2 py-1 rounded-full bg-slate-50 hover:bg-red-50 text-slate-500 hover:text-red-500 transition-all text-sm">
+                            ❤️ <span class="text-xs font-semibold like-count">{{.Likes}}</span>
                         </button>
                     </div>
                 </div>
             </div>
             {{else}}
-            <div class="col-span-3 text-center py-12">
-                <div class="text-6xl mb-4">📭</div>
-                <h3 class="text-xl font-semibold text-slate-600 mb-2">No news articles yet</h3>
-                <p class="text-slate-400">Check back later for updates!</p>
+            <div class="col-span-full text-center py-12">
+                <div class="text-5xl mb-3">📭</div>
+                <h3 class="text-lg font-semibold text-slate-600 mb-1">No news articles yet</h3>
+                <p class="text-slate-400 text-sm">Check back later for updates!</p>
             </div>
             {{end}}
         </div>
     </div>
 
     <!-- Add/Edit News Modal -->
-    <div id="newsModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 modal" onclick="closeModalOnOutside(event)">
-        <div class="bg-white rounded-2xl max-w-md w-full mx-4 modal-content">
-            <div class="p-6">
+    <div id="newsModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 modal p-4" onclick="closeModalOnOutside(event)">
+        <div class="bg-white rounded-2xl max-w-md w-full mx-auto modal-content">
+            <div class="p-5 sm:p-6">
                 <div class="flex justify-between items-center mb-4">
-                    <h3 id="modalTitle" class="text-xl font-bold text-slate-900">Add News</h3>
+                    <h3 id="modalTitle" class="text-lg sm:text-xl font-bold text-slate-900">Add News</h3>
                     <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
                 </div>
                 <form id="newsForm" method="POST">
@@ -178,28 +187,28 @@
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Title</label>
                             <input type="text" id="newsTitle" name="title" required 
-                                   class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                                   class="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Content</label>
                             <textarea id="newsContent" name="content" rows="4" required 
-                                      class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"></textarea>
+                                      class="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"></textarea>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Category</label>
                             <select id="newsCategory" name="category" 
-                                    class="w-full px-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+                                    class="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
                                 <option value="real-estate">🏠 Real Estate</option>
                                 <option value="gig">💼 Gig Economy</option>
                             </select>
                         </div>
                         <div class="flex gap-3 pt-2">
                             <button type="button" onclick="closeModal()" 
-                                    class="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition">
+                                    class="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition text-sm">
                                 Cancel
                             </button>
                             <button type="submit" 
-                                    class="flex-1 bg-[#1d9bf0] text-white px-4 py-2 rounded-xl hover:bg-[#1a8cd8] transition font-semibold">
+                                    class="flex-1 bg-[#1d9bf0] text-white px-4 py-2 rounded-xl hover:bg-[#1a8cd8] transition font-semibold text-sm">
                                 Save
                             </button>
                         </div>
@@ -212,23 +221,38 @@
     <script>
         let currentEditId = null;
 
+        function toggleMobileMenu() {
+            const sidebar = document.getElementById('mobileSidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+            document.body.classList.toggle('mobile-menu-open');
+        }
+
+        function closeMobileMenu() {
+            const sidebar = document.getElementById('mobileSidebar');
+            const overlay = document.getElementById('mobileOverlay');
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('hidden');
+            document.body.classList.remove('mobile-menu-open');
+        }
+
         function filterNews(category) {
             const cards = document.querySelectorAll('#news-grid .news-card');
             let visibleCount = 0;
             
-            // Update button styles
-            document.getElementById('filter-all').className = 'px-5 py-2 rounded-full bg-white text-slate-700 hover:bg-slate-100 font-semibold text-sm transition border border-slate-200';
-            document.getElementById('filter-real-estate').className = 'px-5 py-2 rounded-full bg-white text-slate-700 hover:bg-slate-100 font-semibold text-sm transition border border-slate-200';
-            document.getElementById('filter-gig').className = 'px-5 py-2 rounded-full bg-white text-slate-700 hover:bg-slate-100 font-semibold text-sm transition border border-slate-200';
+            document.getElementById('filter-all').className = 'px-3 py-1.5 rounded-full bg-white text-slate-700 hover:bg-slate-100 font-semibold text-xs transition border border-slate-200';
+            document.getElementById('filter-real-estate').className = 'px-3 py-1.5 rounded-full bg-white text-slate-700 hover:bg-slate-100 font-semibold text-xs transition border border-slate-200';
+            document.getElementById('filter-gig').className = 'px-3 py-1.5 rounded-full bg-white text-slate-700 hover:bg-slate-100 font-semibold text-xs transition border border-slate-200';
             
             if (category === 'all') {
-                document.getElementById('filter-all').className = 'px-5 py-2 rounded-full bg-[#1d9bf0] text-white font-semibold text-sm transition shadow-sm';
+                document.getElementById('filter-all').className = 'px-3 py-1.5 rounded-full bg-[#1d9bf0] text-white font-semibold text-xs transition shadow-sm';
                 cards.forEach(card => {
                     card.style.display = 'block';
                     visibleCount++;
                 });
             } else {
-                document.getElementById(`filter-${category}`).className = 'px-5 py-2 rounded-full bg-[#1d9bf0] text-white font-semibold text-sm transition shadow-sm';
+                document.getElementById(`filter-${category}`).className = 'px-3 py-1.5 rounded-full bg-[#1d9bf0] text-white font-semibold text-xs transition shadow-sm';
                 cards.forEach(card => {
                     if (card.dataset.category === category) {
                         card.style.display = 'block';
@@ -284,7 +308,6 @@
                     })
                     .catch(err => {
                         alert('Error deleting news');
-                        console.error(err);
                     });
             }
         }
@@ -300,24 +323,19 @@
             }
         }
 
-        // Handle form submission with HTMX or fetch
         document.getElementById('newsForm').addEventListener('submit', function(e) {
             e.preventDefault();
             const formData = new FormData(this);
             const action = this.action;
             
-            fetch(action, {
-                method: 'POST',
-                body: formData
-            })
-            .then(res => res.text())
-            .then(() => {
-                location.reload();
-            })
-            .catch(err => {
-                alert('Error saving news');
-                console.error(err);
-            });
+            fetch(action, { method: 'POST', body: formData })
+                .then(res => res.text())
+                .then(() => {
+                    location.reload();
+                })
+                .catch(err => {
+                    alert('Error saving news');
+                });
         });
     </script>
 </body>
