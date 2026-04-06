@@ -1057,6 +1057,12 @@ app.Post("/buy-credits", func(c *fiber.Ctx) error {
 		return c.SendString(`<div class="p-4 text-center">Logged out successfully<script>window.location.reload()</script></div>`)
 	})
 
-	log.Println("🚀 Server running on http://localhost:3000")
-	log.Fatal(app.Listen(":3000"))
+// Get port from environment (Render sets this)
+port := os.Getenv("PORT")
+if port == "" {
+    port = "3000"
+}
+
+log.Printf("🚀 Server running on http://localhost:%s", port)
+log.Fatal(app.Listen(":" + port))
 }
