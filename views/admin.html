@@ -2,219 +2,127 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - metropages</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        .metro-brand { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-weight: 900; letter-spacing: -2.5px; text-transform: lowercase; }
-        @media (max-width: 768px) {
-            .responsive-table table, .responsive-table thead, .responsive-table tbody, .responsive-table th, .responsive-table td, .responsive-table tr { display: block; }
-            .responsive-table thead tr { position: absolute; top: -9999px; left: -9999px; }
-            .responsive-table tr { border: 1px solid #e2e8f0; margin-bottom: 1rem; border-radius: 0.75rem; padding: 0.5rem; background: white; }
-            .responsive-table td { border: none; position: relative; padding-left: 50% !important; text-align: left !important; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
-            .responsive-table td:before { content: attr(data-label); font-weight: 600; color: #0f172a; width: 45%; flex-shrink: 0; }
-        }
-        .toast-notify { position: fixed; bottom: 20px; right: 20px; z-index: 60; background: #1e293b; color: white; padding: 10px 18px; border-radius: 40px; font-size: 0.85rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); opacity: 0; transition: opacity 0.2s; pointer-events: none; }
-        .tab-btn { transition: all 0.2s; }
-        .badge-lead { background: #dbeafe; color: #1e40af; }
-        .badge-application { background: #fef3c7; color: #92400e; }
-    </style>
 </head>
 <body class="bg-slate-50">
-    <div id="mobileOverlay" class="fixed inset-0 bg-black/50 z-40 hidden" onclick="closeMobileMenu()"></div>
-    <div id="mobileSidebar" class="fixed top-0 left-0 w-64 h-full bg-white z-50 transform -translate-x-full transition-transform duration-300 ease-in-out shadow-xl">
-        <div class="p-4 border-b border-slate-100">
-            <div class="flex justify-between items-center">
-                <h1 class="metro-brand text-2xl text-[#1d9bf0]">metropages</h1>
-                <button onclick="closeMobileMenu()" class="text-slate-500 text-2xl leading-5">&times;</button>
+    <div class="max-w-7xl mx-auto p-6">
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-900">Admin Dashboard</h1>
+                <p class="text-slate-500">Welcome, {{.CurrentUser.Username}}</p>
             </div>
-            <p class="text-[10px] text-slate-400 mt-0.5">by kanams.ai 🇮🇳</p>
+            <a href="/" class="bg-[#1d9bf0] text-white px-6 py-2 rounded-full hover:bg-[#1a8cd8] transition">← Back to Home</a>
         </div>
-        <div class="p-4">
-            <a href="/" class="block py-3 px-2 hover:bg-slate-100 rounded-lg transition">🏠 Home</a>
-            <a href="/news" class="block py-3 px-2 hover:bg-slate-100 rounded-lg transition">📰 News Feed</a>
-            <a href="/profile" class="block py-3 px-2 hover:bg-slate-100 rounded-lg transition">👤 Profile</a>
-            <a href="/admin" class="block py-3 px-2 bg-slate-100 text-amber-600 rounded-lg transition">👑 Admin Dashboard</a>
-        </div>
-    </div>
 
-    <div class="max-w-7xl mx-auto p-4 sm:p-6">
-        <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
-            <div class="flex items-center gap-3">
-                <button onclick="toggleMobileMenu()" class="lg:hidden text-slate-600 text-2xl">☰</button>
-                <div>
-                    <h1 class="text-xl sm:text-2xl font-bold text-slate-900">Admin Dashboard</h1>
-                    <p class="text-slate-500 text-sm">Welcome, {{.CurrentUser.Username}}</p>
-                </div>
+        <!-- Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white rounded-2xl p-6 shadow-sm">
+                <div class="text-3xl font-bold text-blue-600">{{.TotalPosts}}</div>
+                <div class="text-slate-500">Total Posts</div>
             </div>
-            <a href="/" class="bg-[#1d9bf0] text-white px-4 py-1.5 rounded-full hover:bg-[#1a8cd8] transition text-sm">← Back</a>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
-            <div class="bg-white rounded-xl p-4 shadow-sm"><div class="text-2xl font-bold text-blue-600">{{.TotalPosts}}</div><div class="text-slate-500 text-sm">Total Posts</div></div>
-            <div class="bg-white rounded-xl p-4 shadow-sm"><div class="text-2xl font-bold text-green-600">{{.TotalUsers}}</div><div class="text-slate-500 text-sm">Total Users</div></div>
-            <div class="bg-white rounded-xl p-4 shadow-sm"><div class="text-2xl font-bold text-amber-600">{{.TotalCreditsSpent}}</div><div class="text-slate-500 text-sm">Credits Spent</div></div>
-            <div class="bg-white rounded-xl p-4 shadow-sm"><div class="text-2xl font-bold text-purple-600">{{len .InterestLeads}}</div><div class="text-slate-500 text-sm">🔔 New Leads</div></div>
-        </div>
-
-        <div class="flex flex-wrap gap-2 mb-6 border-b border-slate-200">
-            <button onclick="showTab('pending')" id="tab-pending" class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-[#1d9bf0] text-[#1d9bf0]">📋 Pending Posts</button>
-            <button onclick="showTab('news')" id="tab-news" class="tab-btn px-4 py-2 text-sm font-semibold text-slate-500">📰 Manage News</button>
-            <button onclick="showTab('trends')" id="tab-trends" class="tab-btn px-4 py-2 text-sm font-semibold text-slate-500">📈 Market Trends</button>
-            <button onclick="showTab('users')" id="tab-users" class="tab-btn px-4 py-2 text-sm font-semibold text-slate-500">👥 Users</button>
-            <button onclick="showTab('leads')" id="tab-leads" class="tab-btn px-4 py-2 text-sm font-semibold text-slate-500">📞 Real Estate Leads</button>
-            <button onclick="showTab('applications')" id="tab-applications" class="tab-btn px-4 py-2 text-sm font-semibold text-slate-500">💼 Gig Applications</button>
+            <div class="bg-white rounded-2xl p-6 shadow-sm">
+                <div class="text-3xl font-bold text-green-600">{{.TotalUsers}}</div>
+                <div class="text-slate-500">Total Users</div>
+            </div>
+            <div class="bg-white rounded-2xl p-6 shadow-sm">
+                <div class="text-3xl font-bold text-amber-600">{{.TotalCreditsSpent}}</div>
+                <div class="text-slate-500">Credits Spent</div>
+            </div>
         </div>
 
         <!-- Pending Posts -->
-        <div id="pending-posts" class="bg-white rounded-xl shadow-sm mb-6">
-            <div class="border-b p-4"><h2 class="text-lg font-bold">Pending Posts for Approval</h2><p class="text-slate-500 text-sm">Review and approve posts from users</p></div>
+        <div class="bg-white rounded-2xl shadow-sm mb-8">
+            <div class="border-b p-6">
+                <h2 class="text-xl font-bold">Pending Posts for Approval</h2>
+                <p class="text-slate-500 text-sm">Review and approve posts from users</p>
+            </div>
             <div class="divide-y">
                 {{range .PendingPosts}}
-                <div class="p-4">
-                    <div class="flex flex-col sm:flex-row justify-between items-start gap-3">
+                <div class="p-6">
+                    <div class="flex justify-between items-start">
                         <div class="flex-1">
-                            <div class="flex flex-wrap items-center gap-2 mb-2">
+                            <div class="flex items-center gap-2 mb-2">
                                 <span class="font-semibold">{{.User}}</span>
                                 <span class="text-slate-500 text-sm">@{{.Handle}}</span>
                                 <span class="text-xs text-slate-400">{{.CreatedAt.Format "Jan 02, 2006"}}</span>
-                                <span class="px-2 py-0.5 text-xs rounded-full {{if eq .Category "Gig"}}bg-emerald-100 text-emerald-700{{else}}bg-blue-100 text-blue-700{{end}}">{{.Category}}</span>
                             </div>
-                            <p class="text-slate-700 text-sm mb-2">{{.Content}}</p>
-                            <div class="flex flex-wrap gap-1.5 mb-2">{{tagHTML .Tags}}</div>
-                            <div class="text-sm text-slate-500">💰 {{.Price}}</div>
+                            <p class="text-slate-700 mb-2">{{.Content}}</p>
+                            <div class="flex gap-2">
+                                <span class="inline-flex items-center px-3 py-1 text-xs font-bold rounded-2xl bg-blue-100 text-blue-700">{{.Category}}</span>
+                                {{tagHTML .Tags}}
+                            </div>
+                            <div class="mt-3 text-sm text-slate-500">💰 {{.Price}}</div>
                         </div>
                         <div class="flex gap-2">
-                            <button hx-post="/admin/approve/{{.ID}}" hx-target="closest .p-4" hx-swap="outerHTML" class="bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 text-sm">✓ Approve</button>
-                            <button hx-post="/admin/delete/{{.ID}}" hx-target="closest .p-4" hx-swap="outerHTML" class="bg-red-500 text-white px-3 py-1.5 rounded-lg hover:bg-red-600 text-sm">✗ Delete</button>
+                            <button hx-post="/admin/approve/{{.ID}}" hx-swap="outerHTML" 
+                                    class="bg-emerald-500 text-white px-4 py-2 rounded-lg hover:bg-emerald-600 transition">
+                                ✓ Approve
+                            </button>
+                            <button hx-post="/admin/delete/{{.ID}}" hx-swap="outerHTML" 
+                                    class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition">
+                                ✗ Delete
+                            </button>
                         </div>
                     </div>
                 </div>
-                {{else}}<div class="p-6 text-center text-slate-500">✨ No pending posts</div>{{end}}
+                {{else}}
+                <div class="p-6 text-center text-slate-500">No pending posts</div>
+                {{end}}
             </div>
         </div>
 
-        <!-- Manage News -->
-        <div id="manage-news" class="bg-white rounded-xl shadow-sm hidden">
-            <div class="border-b p-4 flex justify-between items-center flex-wrap gap-3"><div><h2 class="text-lg font-bold">Manage News Articles</h2><p class="text-slate-500 text-sm">Add, edit, or delete news articles</p></div><button onclick="openAddNewsModal()" class="bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-sm">+ Add News</button></div>
-            <div class="divide-y">
-                {{range .AllNews}}
-                <div class="p-4">
-                    <div class="flex justify-between items-start gap-3"><div class="flex-1"><div class="flex flex-wrap items-center gap-2 mb-1"><span class="font-semibold text-sm">{{.Title}}</span><span class="text-xs text-slate-400">{{.Timestamp}}</span><span class="text-xs bg-slate-100 px-2 py-0.5 rounded">{{.Category}}</span></div><p class="text-slate-600 text-sm">{{.Content}}</p></div><div class="flex gap-2"><button onclick='editNews({{.ID}}, {{printf "%q" .Title}}, {{printf "%q" .Content}}, {{printf "%q" .Category}})' class="text-blue-500 hover:text-blue-700 text-sm">Edit</button><button onclick="deleteNewsItem({{.ID}})" class="text-red-500 hover:text-red-700 text-sm">Delete</button></div></div>
-                </div>{{else}}<div class="p-6 text-center text-slate-500">No news articles</div>{{end}}
+        <!-- Users Management -->
+        <div class="bg-white rounded-2xl shadow-sm">
+            <div class="border-b p-6">
+                <h2 class="text-xl font-bold">User Management</h2>
+                <p class="text-slate-500 text-sm">Manage users and give credits</p>
             </div>
-        </div>
-
-        <!-- Market Trends -->
-        <div id="manage-trends" class="bg-white rounded-xl shadow-sm hidden">
-            <div class="border-b p-4 flex justify-between items-center"><div><h2 class="text-lg font-bold">Market Trends</h2><p class="text-slate-500 text-sm">Manage market trends displayed on homepage</p></div><button onclick="openAddTrendModal()" class="bg-emerald-500 text-white px-4 py-1.5 rounded-lg text-sm">+ Add Trend</button></div>
-            <div class="divide-y">
-                {{range .MarketTrends}}
-                <div class="p-4"><div class="flex justify-between items-start gap-3"><div><div class="flex gap-2"><span class="font-semibold text-sm">{{.Title}}</span><span class="text-xs font-medium text-green-600">{{.Percentage}}</span><span class="text-xs bg-slate-100 px-2 rounded">{{.Category}}</span></div><p class="text-slate-600 text-sm">{{.Description}}</p></div><div class="flex gap-2"><button onclick='editTrendItem({{.ID}}, {{printf "%q" .Title}}, {{printf "%q" .Description}}, {{printf "%q" .Trend}}, {{printf "%q" .Percentage}}, {{printf "%q" .Category}})' class="text-blue-500 hover:text-blue-700 text-sm">Edit</button><button onclick="deleteTrendItem({{.ID}})" class="text-red-500 hover:text-red-700 text-sm">Delete</button></div></div></div>{{else}}<div class="p-6 text-center text-slate-500">No market trends</div>{{end}}
-            </div>
-        </div>
-
-        <!-- Users -->
-        <div id="manage-users" class="bg-white rounded-xl shadow-sm hidden overflow-hidden">
-            <div class="border-b p-4"><h2 class="text-lg font-bold">User Management</h2><p class="text-slate-500 text-sm">Manage users and give credits</p></div>
-            <div class="overflow-x-auto responsive-table">
-                <table class="w-full min-w-[500px]">
-                    <thead class="bg-slate-50"><tr><th class="text-left p-3 text-sm">User</th><th class="text-left p-3 text-sm">Handle</th><th class="text-left p-3 text-sm hidden sm:table-cell">Email</th><th class="text-left p-3 text-sm">Credits</th><th class="text-left p-3 text-sm">Status</th><th class="text-left p-3 text-sm">Actions</th></tr></thead>
-                    <tbody class="divide-y">{{range .Users}}<tr><td class="p-3 text-sm font-medium" data-label="User">{{.Username}}</td><td class="p-3 text-sm text-slate-500" data-label="Handle">@{{.Handle}}</td><td class="p-3 text-sm text-slate-500 hidden sm:table-cell" data-label="Email">{{.Email}}</td><td class="p-3 text-sm font-bold text-amber-600" data-label="Credits">{{.Credits}}</td><td class="p-3 text-sm" data-label="Status">{{if .IsAdmin}}<span class="text-purple-600 font-bold">Admin</span>{{else if .IsPremium}}<span class="text-amber-600 font-bold">Premium</span>{{else}}<span class="text-slate-500">Free</span>{{end}}</td><td class="p-3" data-label="Actions">{{if not .IsAdmin}}<form hx-post="/admin/give-credits" hx-target="closest tr" hx-swap="outerHTML" class="flex gap-1"><input type="hidden" name="user_id" value="{{.ID}}"><input type="number" name="credits" placeholder="Amount" class="border rounded px-2 py-1 text-sm w-20" required min="1"><button type="submit" class="bg-blue-500 text-white px-2 py-1 rounded text-xs hover:bg-blue-600">Give</button></form>{{else}}<span class="text-xs text-slate-400">Admin</span>{{end}}</td></tr>{{end}}</tbody>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-slate-50">
+                        <tr>
+                            <th class="text-left p-4">User</th>
+                            <th class="text-left p-4">Handle</th>
+                            <th class="text-left p-4">Email</th>
+                            <th class="text-left p-4">Credits</th>
+                            <th class="text-left p-4">Status</th>
+                            <th class="text-left p-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y">
+                        {{range .Users}}
+                        <tr>
+                            <td class="p-4 font-medium">{{.Username}}</td>
+                            <td class="p-4 text-slate-500">@{{.Handle}}</td>
+                            <td class="p-4 text-slate-500">{{.Email}}</td>
+                            <td class="p-4 font-bold text-amber-600">{{.Credits}}</td>
+                            <td class="p-4">
+                                {{if .IsAdmin}}
+                                <span class="text-purple-600 font-bold">Admin</span>
+                                {{else if .IsPremium}}
+                                <span class="text-amber-600 font-bold">Premium</span>
+                                {{else}}
+                                <span class="text-slate-500">Free</span>
+                                {{end}}
+                            </td>
+                            <td class="p-4">
+                                {{if not .IsAdmin}}
+                                <form hx-post="/admin/give-credits" hx-target="this" hx-swap="outerHTML" class="flex gap-2">
+                                    <input type="hidden" name="user_id" value="{{.ID}}">
+                                    <input type="number" name="credits" placeholder="Amount" class="border rounded-lg px-3 py-1 text-sm w-24">
+                                    <button type="submit" class="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-600">Give</button>
+                                </form>
+                                {{end}}
+                            </td>
+                        </tr>
+                        {{end}}
+                    </tbody>
                 </table>
             </div>
         </div>
-
-        <!-- Real Estate Leads -->
-        <div id="manage-leads" class="bg-white rounded-xl shadow-sm hidden">
-            <div class="border-b p-4 bg-blue-50"><h2 class="text-lg font-bold">📞 Real Estate Contact Leads</h2><p class="text-slate-500 text-sm">Users interested in properties - forward to service providers</p></div>
-            <div class="divide-y">
-                {{range .InterestLeads}}
-                <div class="p-4">
-                    <div class="flex flex-col md:flex-row justify-between gap-3">
-                        <div class="flex-1">
-                            <div class="flex flex-wrap items-center gap-2 mb-1"><span class="font-bold text-blue-700">👤 {{.UserName}}</span><span class="text-xs text-slate-400">{{.CreatedAt.Format "Jan 02, 2006 15:04"}}</span><span class="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full">New Lead</span></div>
-                            <p class="text-slate-600 text-sm mb-1"><span class="font-medium">Property:</span> {{.PostTitle}}</p>
-                            <p class="text-slate-600 text-sm mb-1"><span class="font-medium">Message:</span> {{.Message}}</p>
-                            <p class="text-slate-500 text-xs">📧 {{.UserEmail}} | 📱 {{.UserPhone}}</p>
-                        </div>
-                        <div class="flex gap-2">
-                            <button onclick="sendLeadToProvider({{.ID}})" class="bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-emerald-600">📤 Send to Provider</button>
-                            <button onclick="archiveLead({{.ID}})" class="bg-gray-400 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-gray-500">Archive</button>
-                        </div>
-                    </div>
-                </div>{{else}}<div class="p-8 text-center text-slate-400">✨ No new leads. Users will appear here when they express interest.</div>{{end}}
-            </div>
-        </div>
-
-        <!-- Gig Applications -->
-        <div id="manage-applications" class="bg-white rounded-xl shadow-sm hidden">
-            <div class="border-b p-4 bg-amber-50"><h2 class="text-lg font-bold">💼 Gig Applications</h2><p class="text-slate-500 text-sm">Job seekers who applied - forward to employers</p></div>
-            <div class="divide-y">
-                {{range .GigApplications}}
-                <div class="p-4">
-                    <div class="flex flex-col md:flex-row justify-between gap-3">
-                        <div class="flex-1">
-                            <div class="flex flex-wrap items-center gap-2 mb-1"><span class="font-bold text-amber-700">👩‍💼 {{.ApplicantName}}</span><span class="text-xs text-slate-400">{{.AppliedAt.Format "Jan 02, 2006 15:04"}}</span><span class="bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded-full">New Application</span></div>
-                            <p class="text-slate-600 text-sm mb-1"><span class="font-medium">Gig:</span> {{.GigTitle}}</p>
-                            <p class="text-slate-600 text-sm mb-1"><span class="font-medium">Experience:</span> {{.Experience}} years</p>
-                            <p class="text-slate-600 text-sm mb-1"><span class="font-medium">Cover Note:</span> {{.CoverNote}}</p>
-                            <p class="text-slate-500 text-xs">📧 {{.Email}} | 📱 {{.Phone}}</p>
-                            <p class="text-slate-500 text-xs">📄 Resume: <a href="{{.ResumeURL}}" target="_blank" class="text-blue-600 underline">View Resume</a></p>
-                        </div>
-                        <div class="flex gap-2">
-                            <button onclick="forwardApplication({{.ID}})" class="bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-emerald-600">📨 Forward to Employer</button>
-                            <button onclick="archiveApplication({{.ID}})" class="bg-gray-400 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-gray-500">Archive</button>
-                        </div>
-                    </div>
-                </div>{{else}}<div class="p-8 text-center text-slate-400">📭 No applications yet. Job seekers will apply via gig posts.</div>{{end}}
-            </div>
-        </div>
     </div>
-
-    <!-- Modals -->
-    <div id="newsModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4" onclick="closeModalOnOutside(event)"><div class="bg-white rounded-2xl max-w-md w-full p-5" onclick="event.stopPropagation()"><h3 id="newsModalTitle" class="text-lg font-bold mb-4">Add News</h3><form id="newsForm" class="space-y-3"><input type="text" id="newsTitle" name="title" placeholder="Title" required class="w-full px-3 py-2 border rounded-lg text-sm"><textarea id="newsContent" name="content" rows="3" placeholder="Content" required class="w-full px-3 py-2 border rounded-lg text-sm"></textarea><select id="newsCategory" name="category" class="w-full px-3 py-2 border rounded-lg text-sm"><option value="real-estate">Real Estate</option><option value="gig">Gig Economy</option></select><div class="flex gap-2"><button type="button" onclick="closeNewsModal()" class="flex-1 px-3 py-2 border rounded-lg text-sm">Cancel</button><button type="submit" class="flex-1 bg-[#1d9bf0] text-white px-3 py-2 rounded-lg text-sm">Save</button></div></form></div></div>
-
-    <div id="trendModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4" onclick="closeModalOnOutside(event)"><div class="bg-white rounded-2xl max-w-md w-full p-5" onclick="event.stopPropagation()"><h3 id="trendModalTitle" class="text-lg font-bold mb-4">Add Market Trend</h3><form id="trendForm" class="space-y-3"><input type="text" id="trendTitle" name="title" placeholder="Title" required class="w-full px-3 py-2 border rounded-lg text-sm"><input type="text" id="trendDescription" name="description" placeholder="Description" required class="w-full px-3 py-2 border rounded-lg text-sm"><select id="trendTrend" name="trend" class="w-full px-3 py-2 border rounded-lg text-sm"><option value="up">📈 Up</option><option value="down">📉 Down</option><option value="stable">➡️ Stable</option></select><input type="text" id="trendPercentage" name="percentage" placeholder="+23%" required class="w-full px-3 py-2 border rounded-lg text-sm"><select id="trendCategory" name="category" class="w-full px-3 py-2 border rounded-lg text-sm"><option value="real-estate">Real Estate</option><option value="gig">Gig Economy</option></select><div class="flex gap-2"><button type="button" onclick="closeTrendModal()" class="flex-1 px-3 py-2 border rounded-lg text-sm">Cancel</button><button type="submit" class="flex-1 bg-[#1d9bf0] text-white px-3 py-2 rounded-lg text-sm">Save</button></div></form></div></div>
-
-    <div id="toastMsg" class="toast-notify"></div>
-
-    <script>
-        let currentEditNewsId = null, currentEditTrendId = null;
-        function showTab(tab) {
-            ['pending-posts','manage-news','manage-trends','manage-users','manage-leads','manage-applications'].forEach(id=>document.getElementById(id)?.classList.add('hidden'));
-            ['pending','news','trends','users','leads','applications'].forEach(t=>{const btn=document.getElementById(`tab-${t}`);if(btn)btn.className='tab-btn px-4 py-2 text-sm font-semibold text-slate-500';});
-            const activeMap = {pending:'pending-posts',news:'manage-news',trends:'manage-trends',users:'manage-users',leads:'manage-leads',applications:'manage-applications'};
-            document.getElementById(activeMap[tab]).classList.remove('hidden');
-            document.getElementById(`tab-${tab}`).className='tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-[#1d9bf0] text-[#1d9bf0]';
-        }
-        function toggleMobileMenu(){document.getElementById('mobileSidebar').classList.toggle('-translate-x-full');document.getElementById('mobileOverlay').classList.toggle('hidden');}
-        function closeMobileMenu(){document.getElementById('mobileSidebar').classList.add('-translate-x-full');document.getElementById('mobileOverlay').classList.add('hidden');}
-        function showToast(msg){const t=document.getElementById('toastMsg');t.textContent=msg;t.style.opacity='1';setTimeout(()=>t.style.opacity='0',2500);}
-        
-        function openAddNewsModal(){currentEditNewsId=null;document.getElementById('newsModalTitle').textContent='Add News';document.getElementById('newsForm').reset();document.getElementById('newsModal').classList.remove('hidden');document.getElementById('newsModal').classList.add('flex');}
-        function closeNewsModal(){document.getElementById('newsModal').classList.add('hidden');document.getElementById('newsModal').classList.remove('flex');}
-        window.editNews=function(id,t,c,cat){currentEditNewsId=id;document.getElementById('newsTitle').value=t;document.getElementById('newsContent').value=c;document.getElementById('newsCategory').value=cat;document.getElementById('newsModalTitle').textContent='Edit News';document.getElementById('newsModal').classList.remove('hidden');document.getElementById('newsModal').classList.add('flex');}
-        window.deleteNewsItem=async function(id){if(confirm('Delete this news article?')){await fetch('/admin/news/delete/'+id,{method:'POST'});location.reload();}}
-        
-        function openAddTrendModal(){currentEditTrendId=null;document.getElementById('trendModalTitle').textContent='Add Market Trend';document.getElementById('trendForm').reset();document.getElementById('trendModal').classList.remove('hidden');document.getElementById('trendModal').classList.add('flex');}
-        function closeTrendModal(){document.getElementById('trendModal').classList.add('hidden');document.getElementById('trendModal').classList.remove('flex');}
-        window.editTrendItem=function(id,t,d,tr,p,cat){currentEditTrendId=id;document.getElementById('trendTitle').value=t;document.getElementById('trendDescription').value=d;document.getElementById('trendTrend').value=tr;document.getElementById('trendPercentage').value=p;document.getElementById('trendCategory').value=cat;document.getElementById('trendModalTitle').textContent='Edit Market Trend';document.getElementById('trendModal').classList.remove('hidden');document.getElementById('trendModal').classList.add('flex');}
-        window.deleteTrendItem=async function(id){if(confirm('Delete this market trend?')){await fetch('/admin/trends/delete/'+id,{method:'POST'});location.reload();}}
-        
-        window.sendLeadToProvider=async function(id){if(confirm('Send this lead to the service provider?')){await fetch('/admin/lead/'+id+'/sent',{method:'POST'});showToast('Lead sent to provider');setTimeout(()=>location.reload(),1000);}}
-        window.archiveLead=async function(id){await fetch('/admin/lead/'+id+'/archived',{method:'POST'});location.reload();}
-        window.forwardApplication=async function(id){if(confirm('Forward this application to the employer?')){await fetch('/admin/application/'+id+'/forwarded',{method:'POST'});showToast('Application forwarded');setTimeout(()=>location.reload(),1000);}}
-        window.archiveApplication=async function(id){await fetch('/admin/application/'+id+'/archived',{method:'POST'});location.reload();}
-        
-        function closeModalOnOutside(e){if(e.target.classList.contains('fixed')){closeNewsModal();closeTrendModal();}}
-        
-        document.getElementById('newsForm')?.addEventListener('submit',async(e)=>{e.preventDefault();const url=currentEditNewsId?`/admin/news/edit/${currentEditNewsId}`:'/admin/news/add';await fetch(url,{method:'POST',body:new FormData(e.target)});location.reload();});
-        document.getElementById('trendForm')?.addEventListener('submit',async(e)=>{e.preventDefault();const url=currentEditTrendId?`/admin/trends/edit/${currentEditTrendId}`:'/admin/trends/add';await fetch(url,{method:'POST',body:new FormData(e.target)});location.reload();});
-        
-        document.querySelectorAll('.responsive-table td').forEach(td=>{const th=td.closest('table')?.querySelectorAll('th')[td.cellIndex];if(th)td.setAttribute('data-label',th.innerText);});
-        showTab('pending');
-    </script>
 </body>
 </html>
