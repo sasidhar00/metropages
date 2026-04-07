@@ -2,367 +2,43 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
-    <title>metropages | Buy, Sell & Gig</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+    <title>News Feed - metropages</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        * { -webkit-tap-highlight-color: transparent; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif; background-color: #fff; }
-        .sidebar-item:active { background-color: #f1f5f9; }
         .metro-brand { font-weight: 900; letter-spacing: -2.5px; text-transform: lowercase; }
-        .boosted { border-left: 4px solid #f59e0b; background: linear-gradient(to right, #fffbeb, #ffffff); }
-        .featured { border-left: 4px solid #8b5cf6; background: linear-gradient(to right, #f5f3ff, #ffffff); }
-        .premium-badge { background: linear-gradient(135deg, #f59e0b, #ef4444); }
-        .mobile-menu-open { overflow: hidden; position: fixed; width: 100%; }
-        @media (max-width: 768px) {
-            button, a, .sidebar-item, [onclick] { cursor: pointer; min-height: 44px; }
-            .post-button-group button { min-height: 36px; }
-            input, textarea, select { font-size: 16px !important; }
-        }
-        img { max-width: 100%; height: auto; }
-        .break-word { word-break: break-word; overflow-wrap: break-word; }
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; display: none; align-items: center; justify-content: center; }
-        .modal-overlay.active { display: flex; }
-        .modal-content { background: white; border-radius: 1.5rem; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; padding: 1.5rem; }
     </style>
 </head>
-<body class="bg-white text-slate-900">
-    <div id="mobileOverlay" class="fixed inset-0 bg-black/50 z-40 hidden" onclick="closeMobileMenu()"></div>
-    
-    <div class="flex flex-col lg:flex-row max-w-7xl mx-auto min-h-screen relative">
-        <header id="sidebar" class="fixed top-0 left-0 w-4/5 max-w-[280px] h-full p-4 border-r border-slate-100 flex flex-col justify-between z-50 bg-white transform -translate-x-full transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 lg:w-64 shadow-xl lg:shadow-none overflow-y-auto">
+<body class="bg-slate-50">
+    <div class="max-w-4xl mx-auto p-4">
+        <div class="flex justify-between items-center mb-6">
             <div>
-                <div class="p-3 mb-4 flex justify-between items-center">
-                    <div>
-                        <h1 class="metro-brand text-2xl text-[#1d9bf0]">metropages</h1>
-                        <p class="text-[10px] text-slate-400 mt-0.5">by kanams.ai 🇮🇳</p>
-                    </div>
-                    <button onclick="closeMobileMenu()" class="lg:hidden text-slate-500 text-2xl w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-100">&times;</button>
-                </div>
-                
-                <nav class="space-y-1">
-                    <a href="/" onclick="closeMobileMenu()" class="sidebar-item text-[#1d9bf0] font-extrabold flex items-center gap-4 p-3 rounded-full text-base"><span>🏠</span> Home</a>
-                    <a href="/search" onclick="closeMobileMenu()" class="sidebar-item flex items-center gap-4 p-3 rounded-full text-base font-medium"><span>🔍</span> Search</a>
-                    <a href="/news" onclick="closeMobileMenu()" class="sidebar-item flex items-center gap-4 p-3 rounded-full text-base font-medium"><span>📰</span> News Feed</a>
-                    <a href="/profile" onclick="closeMobileMenu()" class="sidebar-item flex items-center gap-4 p-3 rounded-full text-base font-medium"><span>👤</span> Profile</a>
-                    {{if .IsAdmin}}
-                    <a href="/admin" onclick="closeMobileMenu()" class="sidebar-item flex items-center gap-4 p-3 rounded-full text-base font-medium text-amber-600"><span>👑</span> Admin Dashboard</a>
-                    {{end}}
-                </nav>
-                <button onclick="{{if .CurrentUser}}document.querySelector('textarea[name=content]')?.focus(){{else}}showLoginPrompt(){{end}}; closeMobileMenu()" 
-                        class="w-full bg-[#1d9bf0] text-white font-bold py-3 rounded-full mt-6 shadow-md hover:bg-[#1a8cd8] transition active:scale-95">
-                    Post Ad
-                </button>
+                <h1 class="metro-brand text-3xl text-[#1d9bf0]">metropages</h1>
+                <p class="text-sm text-slate-500">News & Updates</p>
             </div>
-
-            <div id="sidebar-bottom" class="mt-4">
-                {{if .CurrentUser}}
-                <div class="flex items-center gap-3 p-3 hover:bg-slate-100 rounded-xl cursor-pointer transition">
-                    <div class="w-10 h-10 bg-gradient-to-br from-lime-400 to-emerald-400 rounded-2xl flex items-center justify-center font-bold text-white flex-shrink-0">M</div>
-                    <div class="flex-1 min-w-0">
-                        <div class="font-bold text-sm truncate">{{.CurrentUser.Username}}</div>
-                        <div class="text-slate-500 text-xs truncate">@{{.CurrentUser.Handle}}</div>
-                        <div class="text-amber-600 text-xs font-medium">₹{{.CurrentUser.Credits}} credits</div>
-                        {{if .CurrentUser.IsPremium}}
-                        <div class="text-xs font-bold text-amber-600">⭐ PREMIUM</div>
-                        {{end}}
-                    </div>
-                    <button hx-post="/logout" hx-target="#sidebar-bottom" hx-swap="innerHTML" 
-                            class="text-xs font-medium text-red-500 hover:text-red-600 px-2 py-1 rounded-lg">
-                        Logout
+            <a href="/" class="bg-[#1d9bf0] text-white px-4 py-2 rounded-full hover:bg-[#1a8cd8] transition text-sm">← Back Home</a>
+        </div>
+        
+        <div class="space-y-4">
+            {{range .News}}
+            <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
+                <div class="flex justify-between items-start mb-2">
+                    <h2 class="text-lg font-bold">{{.Title}}</h2>
+                    <span class="text-xs text-slate-400">{{.Timestamp}}</span>
+                </div>
+                <p class="text-slate-600 text-sm mb-3">{{.Content}}</p>
+                <div class="flex justify-between items-center">
+                    <span class="text-xs bg-slate-100 px-2 py-1 rounded-full">{{.Category}}</span>
+                    <button hx-post="/news/like/{{.ID}}" hx-swap="outerHTML" class="flex items-center gap-1 text-sm text-slate-500 hover:text-red-500">
+                        ❤️ <span class="font-medium">{{.Likes}}</span>
                     </button>
                 </div>
-                {{else}}
-                <div class="p-4 border-t border-slate-100">
-                    <div class="flex border-b mb-4">
-                        <button onclick="switchAuthTab(0)" id="tab-login" class="flex-1 font-bold text-sm pb-2 border-b-2 border-[#1d9bf0] text-[#1d9bf0]">Login</button>
-                        <button onclick="switchAuthTab(1)" id="tab-signup" class="flex-1 font-bold text-sm pb-2 text-slate-400">Sign Up</button>
-                    </div>
-                    <div id="auth-login">
-                        <form hx-post="/login" hx-target="#sidebar-bottom" hx-swap="innerHTML" class="space-y-3">
-                            <input type="email" name="email" placeholder="Email" required class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:border-blue-300 outline-none">
-                            <input type="password" name="password" placeholder="Password" required class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:border-blue-300 outline-none">
-                            <button type="submit" class="w-full bg-[#1d9bf0] text-white font-bold py-3 rounded-xl hover:bg-[#1a8cd8] transition text-sm">Login</button>
-                        </form>
-                    </div>
-                    <div id="auth-signup" class="hidden">
-                        <form hx-post="/signup" hx-target="#sidebar-bottom" hx-swap="innerHTML" class="space-y-3">
-                            <input type="text" name="username" placeholder="Full Name" required class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:border-blue-300 outline-none">
-                            <input type="text" name="handle" placeholder="Handle (no @)" required class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:border-blue-300 outline-none">
-                            <input type="email" name="email" placeholder="Email" required class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:border-blue-300 outline-none">
-                            <input type="tel" name="phone" placeholder="Phone Number" class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:border-blue-300 outline-none">
-                            <input type="password" name="password" placeholder="Password (min 6 chars)" required class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:border-blue-300 outline-none">
-                            <button type="submit" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-700 transition text-sm">Create Account</button>
-                        </form>
-                    </div>
-                </div>
-                {{end}}
             </div>
-        </header>
-
-        <button onclick="toggleMobileMenu()" class="lg:hidden fixed bottom-4 left-4 z-30 bg-[#1d9bf0] text-white p-3 rounded-full shadow-lg active:scale-95 transition">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-        </button>
-
-        <main class="flex-1 w-full min-w-0 pb-20 lg:pb-0">
-            <div class="sticky top-0 bg-white/95 backdrop-blur-md p-3 border-b border-slate-100 font-extrabold text-base z-20 flex items-center gap-3">
-                <button onclick="toggleMobileMenu()" class="lg:hidden text-slate-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
-                </button>
-                <span class="flex-1 truncate">{{if .IsProfile}}My Profile{{else if .SearchQuery}}Search Results{{else}}Home{{end}}</span>
-            </div>
-
-            <div class="p-4 border-b-8 border-slate-50">
-                {{if .CurrentUser}}
-                <form hx-post="/post" hx-target="#feed" hx-swap="afterbegin" hx-on::after-request="this.reset()">
-                    <div class="flex gap-3">
-                        <div class="w-10 h-10 bg-gradient-to-br from-lime-400 to-emerald-400 rounded-2xl flex-shrink-0 flex items-center justify-center font-bold text-white">M</div>
-                        <div class="flex-1 min-w-0">
-                            <div class="flex gap-4 mb-3">
-                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="category" value="Real Estate" checked class="accent-blue-500 w-4 h-4"><span class="text-xs font-medium text-slate-600">🏠 Property</span></label>
-                                <label class="flex items-center gap-1.5 cursor-pointer"><input type="radio" name="category" value="Gig" class="accent-green-500 w-4 h-4"><span class="text-xs font-medium text-slate-600">⚡ Gig</span></label>
-                            </div>
-                            <textarea name="content" class="w-full text-base placeholder-slate-400 outline-none resize-none break-word" placeholder="What's the deal?" rows="2" required></textarea>
-                            
-                            <div class="grid grid-cols-1 gap-2 mt-3">
-                                <div class="bg-slate-50 p-2.5 rounded-xl flex items-center gap-2 border border-slate-100">
-                                    <span class="text-base">💰</span>
-                                    <input type="text" name="price" placeholder="Price (e.g., ₹50,000/month)" class="bg-transparent text-sm w-full outline-none">
-                                </div>
-                                <div class="bg-slate-50 p-2.5 rounded-xl flex items-center gap-2 border border-slate-100">
-                                    <span class="text-base">🖼️</span>
-                                    <input type="text" name="image_url" placeholder="Image URL..." class="bg-transparent text-sm w-full outline-none">
-                                </div>
-                            </div>
-                            <div class="flex justify-between items-center mt-3 pt-2 border-t border-slate-100">
-                                <div class="flex gap-4 text-blue-500">
-                                    <span onclick="attachMedia()" class="cursor-pointer text-xl p-1">🎞️</span>
-                                    <span onclick="addPoll()" class="cursor-pointer text-xl p-1">📊</span>
-                                    <span onclick="insertEmoji()" class="cursor-pointer text-xl p-1">😀</span>
-                                </div>
-                                <button type="submit" class="bg-[#1d9bf0] text-white font-semibold px-5 py-2 rounded-xl hover:bg-[#1a8cd8] transition text-sm active:scale-95">Post</button>
-                            </div>
-                        </div>
-                    </div>
-                </form>
-                {{else}}
-                <div onclick="showLoginPrompt()" class="border-2 border-dashed border-slate-300 rounded-2xl p-6 text-center cursor-pointer hover:border-slate-400">
-                    <div class="text-slate-400 text-sm">🔒 Login to post and boost listings</div>
-                </div>
-                {{end}}
-            </div>
-
-            <div id="feed" class="divide-y divide-slate-100">
-                {{range .Posts}}
-                <div class="group p-4 {{if .IsFeatured}}featured{{else if .IsBoosted}}boosted{{end}} hover:bg-slate-50 transition-all duration-200" data-post-id="{{.ID}}" data-category="{{.Category}}">
-                    <div class="flex gap-3">
-                        <div class="w-10 h-10 bg-gradient-to-br from-lime-400 to-emerald-400 rounded-2xl flex-shrink-0 flex items-center justify-center font-bold text-white shadow-sm">M</div>
-                        <div class="flex-1 min-w-0">
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-2">
-                                <div class="flex items-center flex-wrap gap-1">
-                                    <span class="font-semibold text-slate-900 text-sm">{{.User}}</span>
-                                    <span class="text-blue-500 text-xs">✓</span>
-                                    <span class="text-slate-500 text-xs">@{{.Handle}}</span>
-                                    {{if .IsFeatured}}<span class="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-full">⭐ FEATURED</span>{{end}}
-                                    {{if .IsBoosted}}<span class="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-0.5 rounded-full">★ BOOSTED</span>{{end}}
-                                </div>
-                            </div>
-                            <div class="flex flex-wrap gap-1.5 mb-2">
-                                <span class="inline-flex items-center px-2 py-0.5 text-[10px] font-bold rounded-full {{if eq .Category "Gig"}}bg-emerald-100 text-emerald-700{{else}}bg-blue-100 text-blue-700{{end}}">
-                                    {{if eq .Category "Gig"}}⚡ {{.Category}}{{else}}🏠 {{.Category}}{{end}}
-                                </span>
-                                {{tagHTML .Tags}}
-                            </div>
-                            <p class="text-slate-800 text-sm leading-relaxed mb-3 break-word">{{.Content}}</p>
-                            {{if .ImageURL}}
-                            <div class="relative rounded-xl overflow-hidden border border-slate-100 shadow-sm mb-3">
-                                <img src="{{.ImageURL}}" class="w-full aspect-video object-cover" alt="Image" onerror="this.style.display='none'" loading="lazy">
-                            </div>
-                            {{end}}
-                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between pt-2 gap-3">
-                                <div class="font-bold text-base tracking-tight {{if eq .Category "Gig"}}text-emerald-600{{else}}text-blue-600{{end}}">
-                                    {{.Price}}
-                                </div>
-                                <div class="flex items-center gap-2 flex-wrap post-button-group">
-                                    <button hx-post="/like/{{.ID}}" hx-swap="outerHTML" class="flex items-center gap-1.5 text-slate-500 hover:text-red-500 transition px-3 py-1.5 rounded-full bg-slate-50 active:bg-slate-100">
-                                        ❤️ <span class="text-xs font-medium">{{.Likes}}</span>
-                                    </button>
-                                    {{if $.CurrentUser}}
-                                    <button onclick="boostPost({{.ID}})" class="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition active:scale-95">🚀 Boost</button>
-                                    <button onclick="featurePost({{.ID}})" class="flex items-center gap-1.5 bg-purple-500 hover:bg-purple-600 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition active:scale-95">⭐ Feature</button>
-                                    {{end}}
-                                    {{if eq .Category "Real Estate"}}
-                                    <button onclick="openInterestModal({{.ID}}, {{printf "%q" .Content}})" class="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition active:scale-95">📞 Contact</button>
-                                    {{else if eq .Category "Gig"}}
-                                    <button onclick="openApplyModal({{.ID}}, {{printf "%q" .Content}})" class="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition active:scale-95">✍️ Apply Now</button>
-                                    {{end}}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {{else}}
-                <div class="p-8 text-center text-slate-400 text-sm">No posts yet. Be the first to post!</div>
-                {{end}}
-            </div>
-        </main>
-
-        <aside class="hidden lg:block w-80 p-4 sticky top-0 h-screen overflow-y-auto">
-            <div class="bg-slate-100 rounded-full px-4 py-2 flex items-center gap-2 mb-4">
-                <span class="text-slate-400">🔍</span>
-                <form action="/search" method="GET" class="flex-1">
-                    <input type="text" name="q" placeholder="Search metropages..." class="bg-transparent outline-none text-sm w-full">
-                </form>
-            </div>
-            <div class="bg-slate-50 rounded-2xl p-4 mb-4">
-                <h2 class="font-extrabold text-base mb-3">📈 Market Trends</h2>
-                {{range .MarketTrends}}
-                <div class="mb-3">
-                    <div class="text-slate-500 text-xs font-bold uppercase tracking-tighter">{{.Category}}</div>
-                    <div class="font-bold text-sm">{{.Title}}</div>
-                    <div class="text-xs {{if eq .Trend "up"}}text-green-600{{else}}text-slate-400{{end}}">{{.Percentage}}</div>
-                </div>
-                {{end}}
-            </div>
-            <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-4 border border-amber-200">
-                <h2 class="font-extrabold text-base mb-3">💰 Monetize & Earn</h2>
-                {{if .CurrentUser}}
-                <div class="bg-white rounded-xl p-3 mb-3 text-center">
-                    <div class="text-xs text-slate-500">Your Credits</div>
-                    <div class="text-2xl font-bold text-amber-600">₹{{.CurrentUser.Credits}}</div>
-                </div>
-                <div class="mb-4">
-                    <div class="text-sm font-bold mb-2">📦 Buy Credits</div>
-                    <div class="space-y-2">
-                        <div class="w-full bg-white border-2 border-amber-500 text-amber-700 font-bold py-2 rounded-xl text-sm text-center opacity-60 cursor-not-allowed">500 Credits - ₹499</div>
-                        <div class="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold py-2 rounded-xl text-sm text-center opacity-60 cursor-not-allowed">1200 Credits - ₹999</div>
-                    </div>
-                    <p class="text-xs text-slate-400 text-center mt-2">🚧 Coming Soon</p>
-                </div>
-                <div>
-                    <div class="text-sm font-bold mb-2">👑 Premium</div>
-                    {{if .CurrentUser.IsPremium}}
-                    <div class="bg-gradient-to-r from-amber-500 to-red-500 text-white font-bold py-2 rounded-xl text-sm text-center">⭐ ACTIVE</div>
-                    {{else}}
-                    <button onclick="upgradeToPremium()" class="w-full premium-badge text-white font-bold py-2 rounded-xl text-sm text-center">Upgrade - ₹499/month</button>
-                    {{end}}
-                </div>
-                {{else}}
-                <div class="text-center text-sm text-slate-600">Login to buy credits!</div>
-                {{end}}
-            </div>
-        </aside>
-    </div>
-
-    <div class="text-center py-4 border-t border-slate-100 bg-white w-full lg:mt-auto">
-        <p class="text-xs text-slate-400">Made in India 🇮🇳 with ❤️ by <a href="https://kanams.ai" target="_blank" class="text-[#1d9bf0] hover:underline font-medium">kanams.ai</a></p>
-    </div>
-
-    <!-- Interest Modal -->
-    <div id="interestModal" class="modal-overlay" onclick="closeInterestModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 class="text-xl font-bold mb-4">📞 Express Interest</h3>
-            <form id="interestForm">
-                <input type="hidden" id="interestPostId" name="post_id">
-                <input type="hidden" id="interestPostTitle" name="post_title">
-                <div class="mb-4">
-                    <label class="block text-sm font-medium mb-1">Your Message</label>
-                    <textarea name="message" rows="4" class="w-full border rounded-lg px-3 py-2 text-sm" placeholder="I'm interested in this property. Please share more details..." required></textarea>
-                </div>
-                <div class="flex gap-3">
-                    <button type="button" onclick="closeInterestModal()" class="flex-1 px-4 py-2 border rounded-lg text-sm">Cancel</button>
-                    <button type="submit" class="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">Send Interest</button>
-                </div>
-            </form>
+            {{else}}
+            <div class="bg-white rounded-xl p-8 text-center text-slate-400">No news articles yet.</div>
+            {{end}}
         </div>
     </div>
-
-    <!-- Apply Modal -->
-    <div id="applyModal" class="modal-overlay" onclick="closeApplyModal(event)">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 class="text-xl font-bold mb-4">✍️ Apply for Gig</h3>
-            <form id="applyForm">
-                <input type="hidden" id="applyGigId" name="gig_id">
-                <input type="hidden" id="applyGigTitle" name="gig_title">
-                <div class="space-y-3">
-                    <div><input type="text" name="applicant_name" placeholder="Full Name *" required class="w-full border rounded-lg px-3 py-2 text-sm"></div>
-                    <div><input type="email" name="email" placeholder="Email *" required class="w-full border rounded-lg px-3 py-2 text-sm"></div>
-                    <div><input type="tel" name="phone" placeholder="Phone Number *" required class="w-full border rounded-lg px-3 py-2 text-sm"></div>
-                    <div><input type="text" name="experience" placeholder="Years of Experience" class="w-full border rounded-lg px-3 py-2 text-sm"></div>
-                    <div><input type="url" name="resume_url" placeholder="Resume/CV Link (Google Drive/PDF) *" required class="w-full border rounded-lg px-3 py-2 text-sm"></div>
-                    <div><textarea name="cover_note" rows="3" placeholder="Cover Note / Why you're a good fit" class="w-full border rounded-lg px-3 py-2 text-sm"></textarea></div>
-                    <div class="flex gap-3 pt-2">
-                        <button type="button" onclick="closeApplyModal()" class="flex-1 px-4 py-2 border rounded-lg text-sm">Cancel</button>
-                        <button type="submit" class="flex-1 bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm">Submit Application</button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="toast" class="fixed bottom-4 right-4 bg-gray-800 text-white px-4 py-2 rounded-lg text-sm hidden z-50"></div>
-
-    <script>
-        function toggleMobileMenu() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('mobileOverlay');
-            sidebar.classList.toggle('-translate-x-full');
-            overlay.classList.toggle('hidden');
-        }
-        function closeMobileMenu() {
-            document.getElementById('sidebar').classList.add('-translate-x-full');
-            document.getElementById('mobileOverlay').classList.add('hidden');
-        }
-        function showToast(msg, isError = false) {
-            const toast = document.getElementById('toast');
-            toast.textContent = msg;
-            toast.classList.remove('hidden', 'bg-red-600', 'bg-green-600');
-            toast.classList.add(isError ? 'bg-red-600' : 'bg-green-600');
-            setTimeout(() => toast.classList.add('hidden'), 3000);
-        }
-        function boostPost(id) { if(confirm("Boost this post for 99 credits?")) fetch('/boost/'+id,{method:'POST'}).then(()=>location.reload()); }
-        function featurePost(id) { if(confirm("Feature this post for 199 credits?")) fetch('/feature/'+id,{method:'POST'}).then(()=>location.reload()); }
-        function upgradeToPremium() { if(confirm("Upgrade to Premium for 499 credits? You'll get 100 bonus credits!")) fetch('/upgrade',{method:'POST'}).then(r=>r.json()).then(d=>{alert(d.message);if(d.success)location.reload();}); }
-        function showLoginPrompt() { alert("Please login or sign up first!"); }
-        function attachMedia() { const url=prompt("Image URL:"); if(url) document.querySelector('input[name="image_url"]').value=url; }
-        function addPoll() { alert("Poll feature coming soon!"); }
-        function insertEmoji() { const ta=document.querySelector('textarea[name="content"]'); if(ta){ta.value+=" 😀 ";ta.focus();} }
-        function switchAuthTab(n) { document.getElementById('auth-login').classList.toggle('hidden',n===1); document.getElementById('auth-signup').classList.toggle('hidden',n===0); }
-        
-        function openInterestModal(postId, title) {
-            if(!{{.CurrentUser != nil}}){ showToast("Please login first", true); return; }
-            document.getElementById('interestPostId').value = postId;
-            document.getElementById('interestPostTitle').value = title.substring(0,100);
-            document.getElementById('interestModal').classList.add('active');
-        }
-        function closeInterestModal(e) { if(!e || e.target===document.getElementById('interestModal')) document.getElementById('interestModal').classList.remove('active'); }
-        
-        function openApplyModal(gigId, title) {
-            if(!{{.CurrentUser != nil}}){ showToast("Please login first", true); return; }
-            document.getElementById('applyGigId').value = gigId;
-            document.getElementById('applyGigTitle').value = title.substring(0,100);
-            document.getElementById('applyModal').classList.add('active');
-        }
-        function closeApplyModal(e) { if(!e || e.target===document.getElementById('applyModal')) document.getElementById('applyModal').classList.remove('active'); }
-        
-        document.getElementById('interestForm')?.addEventListener('submit', async(e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const res = await fetch('/express-interest', { method: 'POST', body: formData });
-            const data = await res.json();
-            if(data.success) { showToast(data.message); closeInterestModal(); }
-            else showToast(data.error || "Failed", true);
-        });
-        
-        document.getElementById('applyForm')?.addEventListener('submit', async(e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const res = await fetch('/gig-apply', { method: 'POST', body: formData });
-            const data = await res.json();
-            if(data.success) { showToast(data.message); closeApplyModal(); e.target.reset(); }
-            else showToast(data.error || "Failed", true);
-        });
-    </script>
 </body>
 </html>
