@@ -2,43 +2,420 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-    <title>News Feed - metropages</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>metropages | Buy, Sell & Gig</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .metro-brand { font-weight: 900; letter-spacing: -2.5px; text-transform: lowercase; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+            background-color: #fff; 
+        }
+        .sidebar-item:hover { background-color: #f1f5f9; color: #1d9bf0; }
+        .metro-brand { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-weight: 900; 
+            letter-spacing: -2.5px; 
+            text-transform: lowercase;
+        }
+        .boosted { 
+            border-left: 5px solid #f59e0b; 
+            background: linear-gradient(to right, #fffbeb, #ffffff);
+        }
+        .featured {
+            border-left: 5px solid #8b5cf6;
+            background: linear-gradient(to right, #f5f3ff, #ffffff);
+        }
+        .premium-badge {
+            background: linear-gradient(135deg, #f59e0b, #ef4444);
+        }
     </style>
 </head>
-<body class="bg-slate-50">
-    <div class="max-w-4xl mx-auto p-4">
-        <div class="flex justify-between items-center mb-6">
-            <div>
-                <h1 class="metro-brand text-3xl text-[#1d9bf0]">metropages</h1>
-                <p class="text-sm text-slate-500">News & Updates</p>
-            </div>
-            <a href="/" class="bg-[#1d9bf0] text-white px-4 py-2 rounded-full hover:bg-[#1a8cd8] transition text-sm">← Back Home</a>
-        </div>
+<body class="bg-white text-slate-900">
+    <div class="flex max-w-7xl mx-auto min-h-screen">
         
-        <div class="space-y-4">
-            {{range .News}}
-            <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-100">
-                <div class="flex justify-between items-start mb-2">
-                    <h2 class="text-lg font-bold">{{.Title}}</h2>
-                    <span class="text-xs text-slate-400">{{.Timestamp}}</span>
+        <!-- LEFT SIDEBAR -->
+        <header class="w-64 sticky top-0 h-screen p-4 border-r border-slate-100 flex flex-col justify-between z-50 bg-white">
+            <div>
+                <div class="p-3 mb-6">
+                    <h1 class="metro-brand text-2xl text-[#1d9bf0]">metropages</h1>
+                    <p class="text-xs text-slate-400 mt-1">buy. sell. gig.</p>
                 </div>
-                <p class="text-slate-600 text-sm mb-3">{{.Content}}</p>
-                <div class="flex justify-between items-center">
-                    <span class="text-xs bg-slate-100 px-2 py-1 rounded-full">{{.Category}}</span>
-                    <button hx-post="/news/like/{{.ID}}" hx-swap="outerHTML" class="flex items-center gap-1 text-sm text-slate-500 hover:text-red-500">
-                        ❤️ <span class="font-medium">{{.Likes}}</span>
-                    </button>
+                
+                <nav class="space-y-1">
+                    <a href="/" class="sidebar-item text-[#1d9bf0] font-extrabold flex items-center gap-4 p-3 rounded-full text-base"><span>🏠</span> Home</a>
+                    <a href="/search" class="sidebar-item flex items-center gap-4 p-3 rounded-full text-base font-medium"><span>🔍</span> Search</a>
+                    <a href="/news" class="sidebar-item flex items-center gap-4 p-3 rounded-full text-base font-medium"><span>📰</span> News Feed</a>
+                    <a href="/profile" class="sidebar-item flex items-center gap-4 p-3 rounded-full text-base font-medium"><span>👤</span> Profile</a>
+                    {{if .IsAdmin}}
+                    <a href="/admin" class="sidebar-item flex items-center gap-4 p-3 rounded-full text-base font-medium text-amber-600"><span>👑</span> Admin Dashboard</a>
+                    {{end}}
+                </nav>
+                <button onclick="{{if .CurrentUser}}document.querySelector('textarea[name=content]')?.focus(){{else}}showLoginPrompt(){{end}}" 
+                        class="w-full bg-[#1d9bf0] text-white font-bold py-3 rounded-full mt-6 shadow-md hover:bg-[#1a8cd8] transition">
+                    Post Ad
+                </button>
+            </div>
+
+            <!-- LEFT BOTTOM -->
+            <div id="sidebar-bottom">
+                {{if .CurrentUser}}
+                <div class="flex items-center gap-3 p-3 hover:bg-slate-100 rounded-full cursor-pointer transition">
+                    <div class="w-10 h-10 bg-gradient-to-br from-lime-400 to-emerald-400 rounded-2xl flex items-center justify-center font-bold text-white">M</div>
+                    <div class="flex-1">
+                        <div class="font-bold text-sm">{{.CurrentUser.Username}}</div>
+                        <div class="text-slate-500 text-xs">@{{.CurrentUser.Handle}}</div>
+                        <div class="text-amber-600 text-xs font-medium">₹{{.CurrentUser.Credits}} credits</div>
+                        {{if .CurrentUser.IsPremium}}
+                        <div class="text-xs font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-red-600">⭐ PREMIUM</div>
+                        {{end}}
+                    </div>
+                    <button hx-post="/logout" hx-target="#sidebar-bottom" hx-swap="innerHTML" 
+                            class="text-xs font-medium text-red-500 hover:text-red-600">Logout</button>
+                </div>
+                {{else}}
+                <div class="p-4 border-t border-slate-100">
+                    <div class="flex border-b mb-4">
+                        <button onclick="switchAuthTab(0)" id="tab-login" 
+                                class="flex-1 font-bold text-sm pb-2 border-b-2 border-[#1d9bf0] text-[#1d9bf0]">Login</button>
+                        <button onclick="switchAuthTab(1)" id="tab-signup" 
+                                class="flex-1 font-bold text-sm pb-2 text-slate-400">Sign Up</button>
+                    </div>
+
+                    <div id="auth-login">
+                        <form hx-post="/login" hx-target="#sidebar-bottom" hx-swap="innerHTML" class="space-y-3">
+                            <input type="email" name="email" placeholder="Email" required class="w-full px-4 py-3 text-sm border border-slate-200 rounded-2xl focus:border-blue-300 outline-none">
+                            <input type="password" name="password" placeholder="Password" required class="w-full px-4 py-3 text-sm border border-slate-200 rounded-2xl focus:border-blue-300 outline-none">
+                            <button type="submit" class="w-full bg-[#1d9bf0] text-white font-bold py-3.5 rounded-2xl hover:bg-[#1a8cd8] transition text-sm">Login</button>
+                        </form>
+                    </div>
+
+                    <div id="auth-signup" class="hidden">
+                        <form hx-post="/signup" hx-target="#sidebar-bottom" hx-swap="innerHTML" class="space-y-3">
+                            <input type="text" name="username" placeholder="Full Name" required class="w-full px-4 py-3 text-sm border border-slate-200 rounded-2xl focus:border-blue-300 outline-none">
+                            <input type="text" name="handle" placeholder="Handle (no @)" required class="w-full px-4 py-3 text-sm border border-slate-200 rounded-2xl focus:border-blue-300 outline-none">
+                            <input type="email" name="email" placeholder="Email" required class="w-full px-4 py-3 text-sm border border-slate-200 rounded-2xl focus:border-blue-300 outline-none">
+                            <input type="password" name="password" placeholder="Password (min 6 chars)" required class="w-full px-4 py-3 text-sm border border-slate-200 rounded-2xl focus:border-blue-300 outline-none">
+                            <button type="submit" class="w-full bg-emerald-600 text-white font-bold py-3.5 rounded-2xl hover:bg-emerald-700 transition text-sm">Create Account</button>
+                        </form>
+                    </div>
+                </div>
+                {{end}}
+            </div>
+        </header>
+
+        <!-- MAIN CONTENT -->
+        <main class="flex-1 border-r border-slate-100">
+            <div class="sticky top-0 bg-white/80 backdrop-blur-md p-4 border-b border-slate-100 font-extrabold text-base z-20">
+                {{if .IsProfile}}My Profile
+                {{else if .SearchQuery}}Search Results for "{{.SearchQuery}}"
+                {{else}}Home{{end}}
+            </div>
+
+            <!-- Compose Box -->
+            <div class="p-4 border-b-8 border-slate-50">
+                {{if .CurrentUser}}
+                <form hx-post="/post" hx-target="#feed" hx-swap="afterbegin" hx-on::after-request="this.reset()">
+                    <div class="flex gap-4">
+                        <div class="w-11 h-11 bg-gradient-to-br from-lime-400 to-emerald-400 rounded-2xl flex-shrink-0 flex items-center justify-center font-bold text-white">M</div>
+                        <div class="flex-1">
+                            <div class="flex gap-4 mb-3 flex-wrap">
+                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="category" value="Real Estate" checked class="accent-blue-500"><span class="text-xs font-bold text-slate-500">🏠 Property</span></label>
+                                <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="category" value="Gig" class="accent-green-500"><span class="text-xs font-bold text-slate-500">⚡ Gig</span></label>
+                            </div>
+                            <textarea name="content" class="w-full text-base placeholder-slate-500 outline-none resize-none" placeholder="What's the deal?" rows="2" required></textarea>
+                            
+                            <div class="grid grid-cols-2 gap-3 mt-3">
+                                <div class="bg-slate-50 p-3 rounded-2xl flex items-center gap-2 border border-slate-100">
+                                    <span class="text-lg">💰</span>
+                                    <input type="text" name="price" placeholder="Price (e.g., ₹50,000/month)" class="bg-transparent text-sm w-full outline-none">
+                                </div>
+                                <div class="bg-slate-50 p-3 rounded-2xl flex items-center gap-2 border border-slate-100">
+                                    <span class="text-lg">🖼️</span>
+                                    <input type="text" name="image_url" placeholder="Image URL..." class="bg-transparent text-sm w-full outline-none">
+                                </div>
+                            </div>
+
+                            <div class="flex justify-between items-center mt-4 border-t pt-3">
+                                <div class="flex gap-5 text-blue-500 text-xl">
+                                    <span onclick="attachMedia()" class="cursor-pointer hover:scale-110 transition">🎞️</span>
+                                    <span onclick="addPoll()" class="cursor-pointer hover:scale-110 transition">📊</span>
+                                    <span onclick="insertEmoji()" class="cursor-pointer hover:scale-110 transition">😀</span>
+                                </div>
+                                <button type="submit" class="bg-[#1d9bf0] text-white font-bold px-6 py-2 rounded-2xl hover:bg-[#1a8cd8] transition">Post</button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                {{else}}
+                <div onclick="showLoginPrompt()" class="border-2 border-dashed border-slate-300 rounded-3xl p-8 text-center cursor-pointer hover:border-slate-400">
+                    <div class="text-slate-400">🔒 Login to post and boost listings</div>
+                </div>
+                {{end}}
+            </div>
+
+            <!-- FEED -->
+            <div id="feed" class="divide-y divide-slate-100">
+                {{range .Posts}}
+                <div class="group p-5 {{if .IsFeatured}}featured{{else if .IsBoosted}}boosted{{end}} hover:bg-slate-50 transition-all duration-200 border-b border-slate-100 hover:shadow-sm">
+                    <div class="flex gap-4">
+                        <div class="w-11 h-11 bg-gradient-to-br from-lime-400 to-emerald-400 rounded-2xl flex-shrink-0 flex items-center justify-center font-bold text-white shadow-sm">M</div>
+
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="font-semibold text-slate-900">{{.User}}</span>
+                                    <span class="text-blue-500">✓</span>
+                                    <span class="text-slate-500 text-sm">@{{.Handle}}</span>
+                                    {{if .IsFeatured}}<span class="ml-2 bg-purple-100 text-purple-700 text-xs font-bold px-3 py-0.5 rounded-2xl">⭐ FEATURED</span>{{end}}
+                                    {{if .IsBoosted}}<span class="ml-2 bg-amber-100 text-amber-700 text-xs font-bold px-3 py-0.5 rounded-2xl">★ BOOSTED</span>{{end}}
+                                </div>
+                                <button onclick="toggleFollow(this)" class="text-xs font-semibold px-4 py-1.5 bg-black text-white rounded-full hover:bg-slate-800 transition-all active:scale-95">Follow</button>
+                            </div>
+
+                            <div class="flex flex-wrap gap-2 mb-3">
+                                <span class="inline-flex items-center px-3 py-1 text-xs font-bold rounded-2xl 
+                                    {{if eq .Category "Gig"}}bg-emerald-100 text-emerald-700{{else}}bg-blue-100 text-blue-700{{end}}">
+                                    {{if eq .Category "Gig"}}⚡ {{.Category}}{{else}}🏠 {{.Category}}{{end}}
+                                </span>
+                                {{tagHTML .Tags}}
+                            </div>
+
+                            <p class="text-slate-800 text-[15px] leading-relaxed mb-4">{{.Content}}</p>
+
+                            {{if .ImageURL}}
+                            <div class="relative rounded-3xl overflow-hidden border border-slate-100 shadow-sm mb-4">
+                                <img src="{{.ImageURL}}" class="w-full aspect-video object-cover transition-transform group-hover:scale-[1.02]" alt="Image" onerror="this.style.display='none'">
+                            </div>
+                            {{end}}
+
+                            <div class="flex items-center justify-between pt-2 flex-wrap gap-3">
+                                <div class="font-bold text-xl tracking-tight 
+                                    {{if eq .Category "Gig"}}text-emerald-600{{else}}text-blue-600{{end}}">
+                                    {{.Price}}
+                                </div>
+
+                                <div class="flex items-center gap-3 flex-wrap">
+                                    <button hx-post="/like/{{.ID}}" hx-swap="outerHTML" 
+                                            class="flex items-center gap-1.5 text-slate-400 hover:text-red-500 transition-all active:scale-110">
+                                        ❤️ <span class="text-sm font-medium">{{.Likes}}</span>
+                                    </button>
+
+                                    {{if $.CurrentUser}}
+                                    <button onclick="boostPost({{.ID}})" 
+                                            class="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-4 py-2 rounded-2xl transition-all">
+                                        <span>🚀</span> Boost (₹99)
+                                    </button>
+                                    <button onclick="featurePost({{.ID}})" 
+                                            class="flex items-center gap-1.5 bg-purple-500 hover:bg-purple-600 text-white text-xs font-bold px-4 py-2 rounded-2xl transition-all">
+                                        <span>⭐</span> Feature (₹199)
+                                    </button>
+                                    {{end}}
+
+                                    <a href="https://wa.me/919999999999?text=Interested%20in%20listing%20ID%20{{.ID}}" 
+                                       target="_blank"
+                                       class="flex items-center gap-2 bg-[#25D366] hover:bg-[#128C7E] text-white text-sm font-semibold px-5 py-2 rounded-2xl transition-all active:scale-95 shadow-sm">
+                                        <span>📲</span> WhatsApp
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {{else}}
+                <div class="p-8 text-center text-slate-400">
+                    No posts yet. Be the first to post!
+                </div>
+                {{end}}
+            </div>
+        </main>
+
+        <!-- RIGHT SIDEBAR -->
+        <aside class="w-80 p-4 sticky top-0 h-screen hidden lg:block overflow-y-auto">
+            <!-- Search Bar -->
+            <div class="bg-slate-100 rounded-full px-4 py-2 flex items-center gap-2 mb-4">
+                <span class="text-slate-400">🔍</span>
+                <form action="/search" method="GET" class="flex-1">
+                    <input type="text" name="q" placeholder="Search metropages..." class="bg-transparent outline-none text-sm w-full">
+                </form>
+            </div>
+            
+            <!-- Market Trends -->
+            <div class="bg-slate-50 rounded-2xl p-4 mb-4">
+                <h2 class="font-extrabold text-base mb-4">📈 Market Trends</h2>
+                <div class="mb-4">
+                    <div class="text-slate-500 text-xs font-bold uppercase tracking-tighter">Real Estate</div>
+                    <div class="font-bold">#ZaheerabadFarms</div>
+                    <div class="text-xs text-slate-400">+23% this quarter</div>
+                </div>
+                <div class="mb-4">
+                    <div class="text-slate-500 text-xs font-bold uppercase tracking-tighter">Gigs</div>
+                    <div class="font-bold">#RemoteWork</div>
+                    <div class="text-xs text-slate-400">1.2k+ openings</div>
+                </div>
+                <div class="mb-4">
+                    <div class="text-slate-500 text-xs font-bold uppercase tracking-tighter">Hot Category</div>
+                    <div class="font-bold">Full-time Development</div>
+                    <div class="text-xs text-slate-400">↑ 45% demand</div>
                 </div>
             </div>
-            {{else}}
-            <div class="bg-white rounded-xl p-8 text-center text-slate-400">No news articles yet.</div>
-            {{end}}
-        </div>
+
+            <!-- MONETIZATION SECTION -->
+            <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-4 border border-amber-200">
+                <h2 class="font-extrabold text-base mb-3 flex items-center gap-2">💰 <span>Monetize & Earn</span></h2>
+                
+                {{if .CurrentUser}}
+                <div class="bg-white rounded-xl p-3 mb-3 text-center">
+                    <div class="text-xs text-slate-500">Your Credits</div>
+                    <div class="text-2xl font-bold text-amber-600">₹{{.CurrentUser.Credits}}</div>
+                    <div class="text-xs text-slate-400">1 credit = ₹1 value</div>
+                </div>
+
+                <div class="mb-4">
+                    <div class="text-sm font-bold mb-2">📦 Buy Credits</div>
+                    <form hx-post="/buy-credits" hx-target="#sidebar-bottom" hx-swap="innerHTML" class="space-y-2">
+                        <button type="submit" name="package" value="small" 
+                                class="w-full bg-white border-2 border-amber-500 text-amber-700 font-bold py-2 rounded-xl text-sm hover:bg-amber-50 transition">
+                            🎯 500 Credits - ₹499
+                        </button>
+                        <button type="submit" name="package" value="large" 
+                                class="w-full bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold py-2 rounded-xl text-sm hover:shadow-lg transition">
+                            🔥 1200 Credits - ₹999 (Save ₹200)
+                        </button>
+                    </form>
+                </div>
+
+                <div class="mb-3">
+                    <div class="text-sm font-bold mb-2">👑 Premium Membership</div>
+                    {{if .CurrentUser.IsPremium}}
+                    <div class="bg-gradient-to-r from-amber-500 to-red-500 text-white font-bold py-2 rounded-xl text-sm text-center">
+                        ⭐ ACTIVE - Premium Member
+                    </div>
+                    {{else}}
+                    <button onclick="upgradeToPremium()" 
+                            class="w-full premium-badge text-white font-bold py-2 rounded-xl text-sm hover:shadow-lg transition">
+                        ⭐ Upgrade to Premium - ₹499/month
+                    </button>
+                    {{end}}
+                    <div class="text-xs text-slate-600 mt-2 text-center">
+                        ✓ 2x Boost effectiveness<br>
+                        ✓ Priority support<br>
+                        ✓ 100 bonus credits on upgrade<br>
+                        ✓ Auto-approve posts
+                    </div>
+                </div>
+
+                <div class="border-t border-amber-200 pt-3 mt-2">
+                    <div class="text-xs font-semibold text-slate-600 mb-2">💡 Pro Tips:</div>
+                    <div class="text-xs text-slate-500">• Boosted posts get 3x more views</div>
+                    <div class="text-xs text-slate-500">• Featured posts appear at top</div>
+                    <div class="text-xs text-slate-500">• Premium members save 20% on boosts</div>
+                </div>
+                {{else}}
+                <div class="text-center text-sm text-slate-600">
+                    Login to buy credits and boost your listings!
+                </div>
+                {{end}}
+            </div>
+        </aside>
     </div>
+
+    <script>
+        function boostPost(id) {
+            if (confirm("Boost this post for ₹99?\nThis will deduct from your credits balance.\nBoosted posts appear higher in feed for 7 days.")) {
+                fetch('/boost/' + id, { method: 'POST' })
+                    .then(res => res.text())
+                    .then(text => {
+                        alert(text);
+                        if(text.includes("✅")) location.reload();
+                    })
+                    .catch(() => alert("Boost failed. Please try again."));
+            }
+        }
+
+        function featurePost(id) {
+            if (confirm("Feature this post for ₹199?\nFeatured posts appear at the very top for 24 hours!")) {
+                fetch('/feature/' + id, { method: 'POST' })
+                    .then(res => res.text())
+                    .then(text => {
+                        alert(text);
+                        if(text.includes("✅")) location.reload();
+                    })
+                    .catch(() => alert("Feature failed. Please try again."));
+            }
+        }
+
+        function upgradeToPremium() {
+            if (confirm("Upgrade to Premium Membership for ₹499?\n\nBenefits:\n• 2x boost effectiveness\n• Priority support\n• 100 bonus credits on upgrade\n• Auto-approve posts\n\nThis will deduct ₹499 from your credits balance.")) {
+                fetch('/upgrade', { 
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(res => res.json())
+                .then(data => {
+                    alert(data.message);
+                    if (data.success) {
+                        location.reload();
+                    }
+                })
+                .catch(err => {
+                    alert("Upgrade failed. Please try again.");
+                    console.error(err);
+                });
+            }
+        }
+
+        function showLoginPrompt() {
+            alert("🔑 Please login or sign up using the form in the bottom-left corner!");
+        }
+
+        function addPoll() {
+            alert("📊 Poll feature is coming soon!\n\nYou can create polls when posting in Gig category.");
+        }
+
+        function insertEmoji() {
+            const textarea = document.querySelector('textarea[name="content"]');
+            if (textarea) {
+                textarea.value += " 😀 ";
+                textarea.focus();
+            }
+        }
+
+        function switchAuthTab(n) {
+            if (n === 0) {
+                document.getElementById('auth-login').classList.remove('hidden');
+                document.getElementById('auth-signup').classList.add('hidden');
+                document.getElementById('tab-login').classList.add('border-b-2', 'border-[#1d9bf0]', 'text-[#1d9bf0]');
+                document.getElementById('tab-signup').classList.remove('border-b-2', 'border-[#1d9bf0]', 'text-[#1d9bf0]');
+                document.getElementById('tab-signup').classList.add('text-slate-400');
+            } else {
+                document.getElementById('auth-login').classList.add('hidden');
+                document.getElementById('auth-signup').classList.remove('hidden');
+                document.getElementById('tab-signup').classList.add('border-b-2', 'border-[#1d9bf0]', 'text-[#1d9bf0]');
+                document.getElementById('tab-login').classList.remove('border-b-2', 'border-[#1d9bf0]', 'text-[#1d9bf0]');
+                document.getElementById('tab-login').classList.add('text-slate-400');
+            }
+        }
+
+        function toggleFollow(btn) {
+            if (btn.textContent.trim() === 'Follow') {
+                btn.innerHTML = 'Following ✓';
+                btn.classList.add('!bg-emerald-600');
+            } else {
+                btn.textContent = 'Follow';
+                btn.classList.remove('!bg-emerald-600');
+            }
+        }
+
+        function attachMedia() {
+            const url = prompt("📸 Paste your image URL here:");
+            if (url) {
+                const input = document.querySelector('input[name="image_url"]');
+                if(input) input.value = url;
+            }
+        }
+    </script>
 </body>
 </html>
