@@ -4,55 +4,80 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>Admin Dashboard - metropages</title>
+    <!-- HTMX & Tailwind -->
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Custom brand & responsive refinements -->
     <style>
+        /* brand style */
         .metro-brand { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             font-weight: 900; 
             letter-spacing: -2.5px; 
             text-transform: lowercase;
         }
-        .mobile-menu-open {
-            overflow: hidden;
-        }
+        /* improved mobile table card style */
         @media (max-width: 768px) {
-            table, thead, tbody, th, td, tr { 
+            .responsive-table table, .responsive-table thead, .responsive-table tbody, .responsive-table th, .responsive-table td, .responsive-table tr { 
                 display: block; 
             }
-            thead tr { 
+            .responsive-table thead tr { 
                 position: absolute;
                 top: -9999px;
                 left: -9999px;
             }
-            tr { 
+            .responsive-table tr { 
                 border: 1px solid #e2e8f0;
                 margin-bottom: 1rem;
                 border-radius: 0.75rem;
                 padding: 0.5rem;
+                background: white;
             }
-            td { 
+            .responsive-table td { 
                 border: none;
                 position: relative;
                 padding-left: 50% !important;
                 text-align: left !important;
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                flex-wrap: wrap;
+                gap: 0.5rem;
             }
-            td:before { 
-                position: absolute;
-                top: 0.75rem;
-                left: 1rem;
-                width: 45%;
-                padding-right: 10px;
-                white-space: nowrap;
+            .responsive-table td:before { 
+                content: attr(data-label);
+                position: static;
                 font-weight: 600;
                 color: #0f172a;
+                width: 45%;
+                flex-shrink: 0;
             }
-            td:nth-of-type(1):before { content: "User"; }
-            td:nth-of-type(2):before { content: "Handle"; }
-            td:nth-of-type(3):before { content: "Email"; }
-            td:nth-of-type(4):before { content: "Credits"; }
-            td:nth-of-type(5):before { content: "Status"; }
-            td:nth-of-type(6):before { content: "Actions"; }
+            /* action buttons in cards become inline */
+            .action-buttons {
+                justify-content: flex-end;
+                width: 100%;
+                margin-top: 0.5rem;
+            }
+        }
+        /* smooth transitions */
+        .tab-transition {
+            transition: all 0.2s ease;
+        }
+        /* toast notification */
+        .toast-notify {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 60;
+            background: #1e293b;
+            color: white;
+            padding: 10px 18px;
+            border-radius: 40px;
+            font-size: 0.85rem;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            opacity: 0;
+            transition: opacity 0.2s;
+            pointer-events: none;
         }
     </style>
 </head>
@@ -65,9 +90,9 @@
         <div class="p-4 border-b border-slate-100">
             <div class="flex justify-between items-center">
                 <h1 class="metro-brand text-2xl text-[#1d9bf0]">metropages</h1>
-                <p class="text-[10px] text-slate-400 mt-0.5">by kanams.ai 🇮🇳</p>
-                <button onclick="closeMobileMenu()" class="text-slate-500 text-2xl">&times;</button>
+                <button onclick="closeMobileMenu()" class="text-slate-500 text-2xl leading-5">&times;</button>
             </div>
+            <p class="text-[10px] text-slate-400 mt-0.5">by kanams.ai 🇮🇳</p>
         </div>
         <div class="p-4">
             <a href="/" class="block py-3 px-2 hover:bg-slate-100 rounded-lg transition">🏠 Home</a>
@@ -90,7 +115,7 @@
             <a href="/" class="bg-[#1d9bf0] text-white px-4 py-1.5 rounded-full hover:bg-[#1a8cd8] transition text-sm">← Back</a>
         </div>
 
-        <!-- Stats Cards - Responsive Grid -->
+        <!-- Stats Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div class="bg-white rounded-xl p-4 shadow-sm">
                 <div class="text-2xl font-bold text-blue-600">{{.TotalPosts}}</div>
@@ -106,12 +131,12 @@
             </div>
         </div>
 
-        <!-- Tabs - Mobile Friendly -->
+        <!-- Tabs - Mobile Friendly with fixed active handling -->
         <div class="flex flex-wrap gap-2 mb-6 border-b border-slate-200">
-            <button onclick="showTab('pending')" id="tab-pending" class="px-4 py-2 text-sm font-semibold border-b-2 border-[#1d9bf0] text-[#1d9bf0]">Pending Posts</button>
-            <button onclick="showTab('news')" id="tab-news" class="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700">Manage News</button>
-            <button onclick="showTab('trends')" id="tab-trends" class="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700">Market Trends</button>
-            <button onclick="showTab('users')" id="tab-users" class="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700">Users</button>
+            <button onclick="showTab('pending')" id="tab-pending" class="tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-[#1d9bf0] text-[#1d9bf0] transition">Pending Posts</button>
+            <button onclick="showTab('news')" id="tab-news" class="tab-btn px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700 transition">Manage News</button>
+            <button onclick="showTab('trends')" id="tab-trends" class="tab-btn px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700 transition">Market Trends</button>
+            <button onclick="showTab('users')" id="tab-users" class="tab-btn px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700 transition">Users</button>
         </div>
 
         <!-- Pending Posts Tab -->
@@ -120,9 +145,9 @@
                 <h2 class="text-lg font-bold">Pending Posts for Approval</h2>
                 <p class="text-slate-500 text-sm">Review and approve posts from users</p>
             </div>
-            <div class="divide-y">
+            <div class="divide-y" id="pending-list">
                 {{range .PendingPosts}}
-                <div class="p-4">
+                <div class="p-4 post-item" data-id="{{.ID}}">
                     <div class="flex flex-col sm:flex-row justify-between items-start gap-3">
                         <div class="flex-1">
                             <div class="flex flex-wrap items-center gap-2 mb-2">
@@ -133,16 +158,17 @@
                             <p class="text-slate-700 text-sm mb-2">{{.Content}}</p>
                             <div class="flex flex-wrap gap-1.5 mb-2">
                                 <span class="inline-flex items-center px-2 py-0.5 text-xs font-bold rounded-full bg-blue-100 text-blue-700">{{.Category}}</span>
-                                {{tagHTML .Tags}}
+                                <!-- tagHTML helper safe rendering -->
+                                {{range .Tags}}<span class="inline-flex items-center px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-700">#{{.}}</span>{{end}}
                             </div>
-                            <div class="text-sm text-slate-500">💰 {{.Price}}</div>
+                            <div class="text-sm text-slate-500">💰 {{.Price}} credits</div>
                         </div>
                         <div class="flex gap-2">
-                            <button hx-post="/admin/approve/{{.ID}}" hx-swap="outerHTML" 
+                            <button hx-post="/admin/approve/{{.ID}}" hx-target="closest .post-item" hx-swap="outerHTML" hx-headers='{"X-Requested-With": "XMLHttpRequest"}' 
                                     class="bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 transition text-sm">
                                 ✓ Approve
                             </button>
-                            <button hx-post="/admin/delete/{{.ID}}" hx-swap="outerHTML" 
+                            <button hx-post="/admin/delete/{{.ID}}" hx-target="closest .post-item" hx-swap="outerHTML" 
                                     class="bg-red-500 text-white px-3 py-1.5 rounded-lg hover:bg-red-600 transition text-sm">
                                 ✗ Delete
                             </button>
@@ -150,7 +176,7 @@
                     </div>
                 </div>
                 {{else}}
-                <div class="p-6 text-center text-slate-500 text-sm">No pending posts</div>
+                <div class="p-6 text-center text-slate-500 text-sm" id="no-pending-msg">✨ No pending posts — all caught up!</div>
                 {{end}}
             </div>
         </div>
@@ -166,27 +192,28 @@
                     + Add News
                 </button>
             </div>
-            <div class="divide-y">
+            <div class="divide-y" id="news-list">
                 {{range .AllNews}}
-                <div class="p-4">
+                <div class="p-4 news-item" data-news-id="{{.ID}}">
                     <div class="flex justify-between items-start gap-3">
                         <div class="flex-1">
                             <div class="flex flex-wrap items-center gap-2 mb-1">
                                 <span class="font-semibold text-sm">{{.Title}}</span>
                                 <span class="text-xs text-slate-400">{{.Timestamp}}</span>
+                                <span class="text-xs bg-slate-100 px-2 py-0.5 rounded">{{.Category}}</span>
                             </div>
                             <p class="text-slate-600 text-sm">{{.Content}}</p>
                         </div>
                         <div class="flex gap-2">
-                            <button onclick="editNews({{.ID}}, '{{.Title}}', ` + "`{{.Content}}`" + `, '{{.Category}}')" 
+                            <button onclick='editNews({{.ID}}, {{printf "%q" .Title}}, {{printf "%q" .Content}}, {{printf "%q" .Category}})' 
                                     class="text-blue-500 hover:text-blue-700 text-sm">Edit</button>
-                            <button onclick="deleteNews({{.ID}})" 
+                            <button onclick="deleteNewsItem({{.ID}})" 
                                     class="text-red-500 hover:text-red-700 text-sm">Delete</button>
                         </div>
                     </div>
                 </div>
                 {{else}}
-                <div class="p-6 text-center text-slate-500">No news articles</div>
+                <div class="p-6 text-center text-slate-500" id="no-news-msg">No news articles — create your first news!</div>
                 {{end}}
             </div>
         </div>
@@ -202,39 +229,40 @@
                     + Add Trend
                 </button>
             </div>
-            <div class="divide-y">
+            <div class="divide-y" id="trends-list">
                 {{range .MarketTrends}}
-                <div class="p-4">
+                <div class="p-4 trend-item" data-trend-id="{{.ID}}">
                     <div class="flex justify-between items-start gap-3">
                         <div class="flex-1">
                             <div class="flex flex-wrap items-center gap-2 mb-1">
                                 <span class="font-semibold text-sm">{{.Title}}</span>
-                                <span class="text-xs text-green-600">{{.Percentage}}</span>
+                                <span class="text-xs font-medium text-green-600">{{.Percentage}}</span>
+                                <span class="text-xs bg-slate-100 px-2 py-0.5 rounded">{{.Category}}</span>
                             </div>
                             <p class="text-slate-600 text-sm">{{.Description}}</p>
                         </div>
                         <div class="flex gap-2">
-                            <button onclick="editTrend({{.ID}}, '{{.Title}}', '{{.Description}}', '{{.Trend}}', '{{.Percentage}}', '{{.Category}}')" 
+                            <button onclick='editTrendItem({{.ID}}, {{printf "%q" .Title}}, {{printf "%q" .Description}}, {{printf "%q" .Trend}}, {{printf "%q" .Percentage}}, {{printf "%q" .Category}})' 
                                     class="text-blue-500 hover:text-blue-700 text-sm">Edit</button>
-                            <button onclick="deleteTrend({{.ID}})" 
+                            <button onclick="deleteTrendItem({{.ID}})" 
                                     class="text-red-500 hover:text-red-700 text-sm">Delete</button>
                         </div>
                     </div>
                 </div>
                 {{else}}
-                <div class="p-6 text-center text-slate-500">No market trends</div>
+                <div class="p-6 text-center text-slate-500" id="no-trends-msg">No market trends — add a trend to engage users.</div>
                 {{end}}
             </div>
         </div>
 
-        <!-- Users Management Tab -->
-        <div id="manage-users" class="bg-white rounded-xl shadow-sm hidden overflow-x-auto">
+        <!-- Users Management Tab (improved responsive table) -->
+        <div id="manage-users" class="bg-white rounded-xl shadow-sm hidden overflow-hidden">
             <div class="border-b p-4">
                 <h2 class="text-lg font-bold">User Management</h2>
                 <p class="text-slate-500 text-sm">Manage users and give credits</p>
             </div>
-            <div class="overflow-x-auto">
-                <table class="w-full">
+            <div class="overflow-x-auto responsive-table">
+                <table class="w-full min-w-[500px]">
                     <thead class="bg-slate-50">
                         <tr>
                             <th class="text-left p-3 text-sm">User</th>
@@ -248,11 +276,11 @@
                     <tbody class="divide-y">
                         {{range .Users}}
                         <tr>
-                            <td class="p-3 text-sm font-medium">{{.Username}}</td>
-                            <td class="p-3 text-sm text-slate-500">@{{.Handle}}</td>
-                            <td class="p-3 text-sm text-slate-500 hidden sm:table-cell">{{.Email}}</td>
-                            <td class="p-3 text-sm font-bold text-amber-600">{{.Credits}}</td>
-                            <td class="p-3 text-sm">
+                            <td class="p-3 text-sm font-medium" data-label="User">{{.Username}}</td>
+                            <td class="p-3 text-sm text-slate-500" data-label="Handle">@{{.Handle}}</td>
+                            <td class="p-3 text-sm text-slate-500 hidden sm:table-cell" data-label="Email">{{.Email}}</td>
+                            <td class="p-3 text-sm font-bold text-amber-600" data-label="Credits"><span class="credit-value">{{.Credits}}</span></td>
+                            <td class="p-3 text-sm" data-label="Status">
                                 {{if .IsAdmin}}
                                 <span class="text-purple-600 font-bold text-xs">Admin</span>
                                 {{else if .IsPremium}}
@@ -261,13 +289,15 @@
                                 <span class="text-slate-500 text-xs">Free</span>
                                 {{end}}
                             </td>
-                            <td class="p-3">
+                            <td class="p-3" data-label="Actions">
                                 {{if not .IsAdmin}}
-                                <form hx-post="/admin/give-credits" hx-target="this" hx-swap="outerHTML" class="flex gap-1">
+                                <form class="give-credits-form flex gap-1" hx-post="/admin/give-credits" hx-target="closest tr" hx-swap="outerHTML" hx-trigger="submit">
                                     <input type="hidden" name="user_id" value="{{.ID}}">
-                                    <input type="number" name="credits" placeholder="Amt" class="border rounded-lg px-2 py-1 text-sm w-16">
+                                    <input type="number" name="credits" placeholder="Amt" class="border rounded-lg px-2 py-1 text-sm w-20" required min="1">
                                     <button type="submit" class="bg-blue-500 text-white px-2 py-1 rounded-lg text-xs hover:bg-blue-600">Give</button>
                                 </form>
+                                {{else}}
+                                <span class="text-xs text-slate-400">—</span>
                                 {{end}}
                             </td>
                         </tr>
@@ -280,13 +310,13 @@
 
     <!-- News Modal -->
     <div id="newsModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4" onclick="closeModalOnOutside(event)">
-        <div class="bg-white rounded-2xl max-w-md w-full">
+        <div class="bg-white rounded-2xl max-w-md w-full" onclick="event.stopPropagation()">
             <div class="p-5">
                 <div class="flex justify-between items-center mb-4">
                     <h3 id="newsModalTitle" class="text-lg font-bold">Add News</h3>
                     <button onclick="closeNewsModal()" class="text-slate-400 text-2xl">&times;</button>
                 </div>
-                <form id="newsForm" method="POST">
+                <form id="newsForm">
                     <div class="space-y-3">
                         <input type="text" id="newsTitle" name="title" placeholder="Title" required class="w-full px-3 py-2 border rounded-lg text-sm">
                         <textarea id="newsContent" name="content" rows="3" placeholder="Content" required class="w-full px-3 py-2 border rounded-lg text-sm"></textarea>
@@ -306,13 +336,13 @@
 
     <!-- Trend Modal -->
     <div id="trendModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4" onclick="closeModalOnOutside(event)">
-        <div class="bg-white rounded-2xl max-w-md w-full">
+        <div class="bg-white rounded-2xl max-w-md w-full" onclick="event.stopPropagation()">
             <div class="p-5">
                 <div class="flex justify-between items-center mb-4">
                     <h3 id="trendModalTitle" class="text-lg font-bold">Add Market Trend</h3>
                     <button onclick="closeTrendModal()" class="text-slate-400 text-2xl">&times;</button>
                 </div>
-                <form id="trendForm" method="POST">
+                <form id="trendForm">
                     <div class="space-y-3">
                         <input type="text" id="trendTitle" name="title" placeholder="Title" required class="w-full px-3 py-2 border rounded-lg text-sm">
                         <input type="text" id="trendDescription" name="description" placeholder="Description" required class="w-full px-3 py-2 border rounded-lg text-sm">
@@ -336,84 +366,123 @@
         </div>
     </div>
 
+    <!-- Toast notification for feedback -->
+    <div id="toastMsg" class="toast-notify"></div>
+
     <script>
+        // Helper functions
         let currentEditNewsId = null;
         let currentEditTrendId = null;
+
+        function showToast(msg, duration = 2500) {
+            const toast = document.getElementById('toastMsg');
+            toast.textContent = msg;
+            toast.style.opacity = '1';
+            setTimeout(() => {
+                toast.style.opacity = '0';
+            }, duration);
+        }
 
         function toggleMobileMenu() {
             const sidebar = document.getElementById('mobileSidebar');
             const overlay = document.getElementById('mobileOverlay');
             sidebar.classList.toggle('-translate-x-full');
             overlay.classList.toggle('hidden');
+            if (!sidebar.classList.contains('-translate-x-full')) {
+                document.body.classList.add('mobile-menu-open');
+            } else {
+                document.body.classList.remove('mobile-menu-open');
+            }
         }
-
         function closeMobileMenu() {
             const sidebar = document.getElementById('mobileSidebar');
             const overlay = document.getElementById('mobileOverlay');
             sidebar.classList.add('-translate-x-full');
             overlay.classList.add('hidden');
+            document.body.classList.remove('mobile-menu-open');
         }
 
         function showTab(tab) {
+            // hide all content panels
             document.getElementById('pending-posts').classList.add('hidden');
             document.getElementById('manage-news').classList.add('hidden');
             document.getElementById('manage-trends').classList.add('hidden');
             document.getElementById('manage-users').classList.add('hidden');
             
-            document.getElementById('tab-pending').className = 'px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700';
-            document.getElementById('tab-news').className = 'px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700';
-            document.getElementById('tab-trends').className = 'px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700';
-            document.getElementById('tab-users').className = 'px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700';
+            // reset all tab buttons
+            const tabs = ['pending', 'news', 'trends', 'users'];
+            tabs.forEach(t => {
+                const btn = document.getElementById(`tab-${t}`);
+                if (btn) {
+                    btn.className = 'tab-btn px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700 transition';
+                }
+            });
             
+            let activePanel = '';
             if (tab === 'pending') {
                 document.getElementById('pending-posts').classList.remove('hidden');
-                document.getElementById('tab-pending').className = 'px-4 py-2 text-sm font-semibold border-b-2 border-[#1d9bf0] text-[#1d9bf0]';
+                activePanel = 'tab-pending';
             } else if (tab === 'news') {
                 document.getElementById('manage-news').classList.remove('hidden');
-                document.getElementById('tab-news').className = 'px-4 py-2 text-sm font-semibold border-b-2 border-[#1d9bf0] text-[#1d9bf0]';
+                activePanel = 'tab-news';
             } else if (tab === 'trends') {
                 document.getElementById('manage-trends').classList.remove('hidden');
-                document.getElementById('tab-trends').className = 'px-4 py-2 text-sm font-semibold border-b-2 border-[#1d9bf0] text-[#1d9bf0]';
+                activePanel = 'tab-trends';
             } else if (tab === 'users') {
                 document.getElementById('manage-users').classList.remove('hidden');
-                document.getElementById('tab-users').className = 'px-4 py-2 text-sm font-semibold border-b-2 border-[#1d9bf0] text-[#1d9bf0]';
+                activePanel = 'tab-users';
+            }
+            if(activePanel) {
+                const activeBtn = document.getElementById(activePanel);
+                if(activeBtn) activeBtn.className = 'tab-btn px-4 py-2 text-sm font-semibold border-b-2 border-[#1d9bf0] text-[#1d9bf0] transition';
             }
         }
 
+        // News logic with POST fetch and live UI update
         function openAddNewsModal() {
             currentEditNewsId = null;
             document.getElementById('newsModalTitle').textContent = 'Add News';
             document.getElementById('newsTitle').value = '';
             document.getElementById('newsContent').value = '';
             document.getElementById('newsCategory').value = 'real-estate';
-            document.getElementById('newsForm').action = '/admin/news/add';
             document.getElementById('newsModal').classList.remove('hidden');
             document.getElementById('newsModal').classList.add('flex');
         }
 
-        function editNews(id, title, content, category) {
+        window.editNews = function(id, title, content, category) {
             currentEditNewsId = id;
             document.getElementById('newsModalTitle').textContent = 'Edit News';
             document.getElementById('newsTitle').value = title;
             document.getElementById('newsContent').value = content;
             document.getElementById('newsCategory').value = category;
-            document.getElementById('newsForm').action = '/admin/news/edit/' + id;
             document.getElementById('newsModal').classList.remove('hidden');
             document.getElementById('newsModal').classList.add('flex');
-        }
+        };
 
-        function deleteNews(id) {
-            if (confirm('Delete this news article?')) {
-                fetch('/admin/news/delete/' + id, { method: 'POST' })
-                    .then(() => location.reload());
-            }
-        }
+        window.deleteNewsItem = async function(id) {
+            if (!confirm('Delete this news article?')) return;
+            try {
+                const res = await fetch('/admin/news/delete/' + id, { method: 'POST' });
+                if (res.ok) {
+                    const item = document.querySelector(`.news-item[data-news-id='${id}']`);
+                    if (item) item.remove();
+                    const remaining = document.querySelectorAll('#news-list .news-item').length;
+                    if (remaining === 0) {
+                        document.getElementById('news-list').innerHTML = '<div class="p-6 text-center text-slate-500" id="no-news-msg">No news articles — create your first news!</div>';
+                    }
+                    showToast('News deleted');
+                } else {
+                    showToast('Error deleting news');
+                }
+            } catch(e) { showToast('Server error'); }
+        };
 
         function closeNewsModal() {
             document.getElementById('newsModal').classList.add('hidden');
             document.getElementById('newsModal').classList.remove('flex');
         }
 
+        // Trends logic
         function openAddTrendModal() {
             currentEditTrendId = null;
             document.getElementById('trendModalTitle').textContent = 'Add Market Trend';
@@ -422,12 +491,11 @@
             document.getElementById('trendTrend').value = 'up';
             document.getElementById('trendPercentage').value = '';
             document.getElementById('trendCategory').value = 'real-estate';
-            document.getElementById('trendForm').action = '/admin/trends/add';
             document.getElementById('trendModal').classList.remove('hidden');
             document.getElementById('trendModal').classList.add('flex');
         }
 
-        function editTrend(id, title, description, trend, percentage, category) {
+        window.editTrendItem = function(id, title, description, trend, percentage, category) {
             currentEditTrendId = id;
             document.getElementById('trendModalTitle').textContent = 'Edit Market Trend';
             document.getElementById('trendTitle').value = title;
@@ -435,17 +503,24 @@
             document.getElementById('trendTrend').value = trend;
             document.getElementById('trendPercentage').value = percentage;
             document.getElementById('trendCategory').value = category;
-            document.getElementById('trendForm').action = '/admin/trends/edit/' + id;
             document.getElementById('trendModal').classList.remove('hidden');
             document.getElementById('trendModal').classList.add('flex');
-        }
+        };
 
-        function deleteTrend(id) {
-            if (confirm('Delete this market trend?')) {
-                fetch('/admin/trends/delete/' + id, { method: 'POST' })
-                    .then(() => location.reload());
-            }
-        }
+        window.deleteTrendItem = async function(id) {
+            if (!confirm('Delete this market trend?')) return;
+            try {
+                const res = await fetch('/admin/trends/delete/' + id, { method: 'POST' });
+                if (res.ok) {
+                    const el = document.querySelector(`.trend-item[data-trend-id='${id}']`);
+                    if (el) el.remove();
+                    if (document.querySelectorAll('#trends-list .trend-item').length === 0) {
+                        document.getElementById('trends-list').innerHTML = '<div class="p-6 text-center text-slate-500" id="no-trends-msg">No market trends — add a trend to engage users.</div>';
+                    }
+                    showToast('Trend deleted');
+                } else showToast('Delete failed');
+            } catch(e) { showToast('Error'); }
+        };
 
         function closeTrendModal() {
             document.getElementById('trendModal').classList.add('hidden');
@@ -459,17 +534,66 @@
             }
         }
 
-        document.getElementById('newsForm').addEventListener('submit', function(e) {
+        // Form submissions with dynamic action based on edit/add
+        document.getElementById('newsForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            fetch(this.action, { method: 'POST', body: new FormData(this) })
-                .then(() => location.reload());
+            const formData = new FormData(this);
+            const isEdit = currentEditNewsId !== null;
+            const url = isEdit ? `/admin/news/edit/${currentEditNewsId}` : '/admin/news/add';
+            try {
+                const res = await fetch(url, { method: 'POST', body: formData });
+                if (res.ok) {
+                    showToast(isEdit ? 'News updated' : 'News added');
+                    closeNewsModal();
+                    setTimeout(() => location.reload(), 400);
+                } else {
+                    showToast('Operation failed');
+                }
+            } catch(err) { showToast('Network error'); }
         });
 
-        document.getElementById('trendForm').addEventListener('submit', function(e) {
+        document.getElementById('trendForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            fetch(this.action, { method: 'POST', body: new FormData(this) })
-                .then(() => location.reload());
+            const formData = new FormData(this);
+            const isEdit = currentEditTrendId !== null;
+            const url = isEdit ? `/admin/trends/edit/${currentEditTrendId}` : '/admin/trends/add';
+            try {
+                const res = await fetch(url, { method: 'POST', body: formData });
+                if (res.ok) {
+                    showToast(isEdit ? 'Trend updated' : 'Trend added');
+                    closeTrendModal();
+                    setTimeout(() => location.reload(), 400);
+                } else {
+                    showToast('Failed to save trend');
+                }
+            } catch(e) { showToast('Error'); }
         });
-    </script>  
+
+        // Additional handlers for htmx swapped content (optional) - ensure user credit forms update after give
+        document.body.addEventListener('htmx:afterSwap', function(evt) {
+            if (evt.target.closest('.give-credits-form')) {
+                showToast('Credits updated successfully');
+            }
+            if (evt.detail.target && evt.detail.target.classList && evt.detail.target.classList.contains('post-item')) {
+                showToast('Post updated');
+            }
+        });
+        document.body.addEventListener('htmx:responseError', function() {
+            showToast('Server error, please try again');
+        });
+
+        // Ensure proper initial active tab from url hash or default pending
+        const hash = window.location.hash.substring(1);
+        if (hash === 'news') showTab('news');
+        else if (hash === 'trends') showTab('trends');
+        else if (hash === 'users') showTab('users');
+        else showTab('pending');
+        
+        // Fix for mobile table data-label population
+        document.querySelectorAll('.responsive-table td').forEach(td => {
+            const header = td.parentElement.parentElement.querySelector(`th:nth-child(${td.cellIndex + 1})`);
+            if (header) td.setAttribute('data-label', header.innerText);
+        });
+    </script>
 </body>
 </html>
