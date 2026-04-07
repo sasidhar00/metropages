@@ -7,18 +7,16 @@ import (
 	"log"
 	"strings"
 	"time"
-        "os"
+	"os"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/template/html/v2"
 	_ "github.com/mattn/go-sqlite3"
-        _ "github.com/tursodatabase/libsql-client-go/libsql"
+	_ "github.com/tursodatabase/libsql-client-go/libsql"
 	"golang.org/x/crypto/bcrypt"
-        
-        "github.com/joho/godotenv"
-
+	"github.com/joho/godotenv"
 )
 
 type Post struct {
@@ -36,6 +34,7 @@ type Post struct {
 	CreatedAt  time.Time
 	UserID     int
 	Status     string
+	TagList    []string
 }
 
 type User struct {
@@ -43,6 +42,7 @@ type User struct {
 	Username      string
 	Handle        string
 	Email         string
+	Phone         string
 	IsAdmin       bool
 	Credits       int
 	IsPremium     bool
@@ -63,27 +63,50 @@ type MarketTrend struct {
 	ID          int
 	Title       string
 	Description string
-	Trend       string // up, down, stable
+	Trend       string
 	Percentage  string
 	Category    string
+}
+
+type InterestLead struct {
+	ID          int
+	PostID      int
+	PostTitle   string
+	UserName    string
+	UserEmail   string
+	UserPhone   string
+	Message     string
+	CreatedAt   time.Time
+	Status      string
+}
+
+type GigApplication struct {
+	ID            int
+	GigID         int
+	GigTitle      string
+	ApplicantName string
+	Email         string
+	Phone         string
+	Experience    string
+	ResumeURL     string
+	CoverNote     string
+	AppliedAt     time.Time
+	Status        string
 }
 
 var db *sql.DB
 
 func initDB() {
-	// Load .env file
 	if err := godotenv.Load(); err != nil {
 		log.Println("⚠️ No .env file found, using environment variables")
 	}
 
-	// Get Turso credentials
 	dbURL := os.Getenv("TURSO_DB_URL")
 	authToken := os.Getenv("TURSO_AUTH_TOKEN")
 
 	var err error
 	
 	if dbURL != "" && authToken != "" {
-		// Production: Use Turso
 		log.Println("🔗 Connecting to Turso database...")
 		db, err = sql.Open("libsql", dbURL+"?authToken="+authToken)
 		if err != nil {
@@ -91,7 +114,6 @@ func initDB() {
 		}
 		log.Println("✅ Connected to Turso successfully!")
 	} else {
-		// Local development: Use SQLite
 		log.Println("📁 Using SQLite for local development")
 		db, err = sql.Open("sqlite3", "./metropages.db")
 		if err != nil {
@@ -99,12 +121,10 @@ func initDB() {
 		}
 	}
 
-	// Test connection
 	if err := db.Ping(); err != nil {
 		log.Fatal("Database ping failed:", err)
 	}
 
-	// Create tables
 	createTablesSQL := `
 		CREATE TABLE IF NOT EXISTS posts (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -128,6 +148,7 @@ func initDB() {
 			username TEXT UNIQUE,
 			handle TEXT UNIQUE,
 			email TEXT UNIQUE,
+			phone TEXT,
 			password_hash TEXT,
 			is_admin BOOLEAN DEFAULT FALSE,
 			credits INTEGER DEFAULT 500,
@@ -163,6 +184,32 @@ func initDB() {
 			description TEXT,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		);
+
+		CREATE TABLE IF NOT EXISTS interest_leads (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			post_id INTEGER,
+			post_title TEXT,
+			user_name TEXT,
+			user_email TEXT,
+			user_phone TEXT,
+			message TEXT,
+			status TEXT DEFAULT 'pending',
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);
+
+		CREATE TABLE IF NOT EXISTS gig_applications (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			gig_id INTEGER,
+			gig_title TEXT,
+			applicant_name TEXT,
+			email TEXT,
+			phone TEXT,
+			experience TEXT,
+			resume_url TEXT,
+			cover_note TEXT,
+			status TEXT DEFAULT 'pending',
+			applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);
 	`
 
 	_, err = db.Exec(createTablesSQL)
@@ -171,14 +218,13 @@ func initDB() {
 	}
 	log.Println("✅ Tables created/verified")
 
-	// Seed default admin
 	var adminCount int
 	db.QueryRow("SELECT COUNT(*) FROM users WHERE is_admin = 1").Scan(&adminCount)
 	if adminCount == 0 {
 		hash, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
-		_, err = db.Exec(`INSERT INTO users (username, handle, email, password_hash, is_admin, credits, is_premium, membership_tier) 
-		         VALUES (?,?,?,?,?,?,?,?)`, 
-			"MetroPages Admin", "metropages", "admin@metropages.com", hash, true, 9999, true, "premium")
+		_, err = db.Exec(`INSERT INTO users (username, handle, email, phone, password_hash, is_admin, credits, is_premium, membership_tier) 
+		         VALUES (?,?,?,?,?,?,?,?,?)`, 
+			"MetroPages Admin", "metropages", "admin@metropages.com", "+919999999999", hash, true, 9999, true, "premium")
 		if err != nil {
 			log.Println("Warning: Could not create admin user:", err)
 		} else {
@@ -186,7 +232,6 @@ func initDB() {
 		}
 	}
 
-	// Seed news if empty
 	var newsCount int
 	db.QueryRow("SELECT COUNT(*) FROM news").Scan(&newsCount)
 	if newsCount == 0 {
@@ -205,7 +250,6 @@ func initDB() {
 		log.Println("✅ Seeded", len(newsData), "news articles")
 	}
 
-	// Seed market trends if empty
 	var trendsCount int
 	db.QueryRow("SELECT COUNT(*) FROM market_trends").Scan(&trendsCount)
 	if trendsCount == 0 {
@@ -249,8 +293,6 @@ func generateTagHTML(tags string) template.HTML {
 			color = "red"
 		case "Flexible Hours":
 			color = "amber"
-		case "Experienced", "Fresher":
-			color = "indigo"
 		}
 		sb.WriteString(fmt.Sprintf(`<span class="inline-flex items-center px-3 py-1 text-xs font-bold rounded-2xl bg-%s-100 text-%s-700">%s</span>`, color, color, t))
 	}
@@ -270,8 +312,8 @@ func getCurrentUser(c *fiber.Ctx) *User {
 
 	var u User
 	var premiumUntil sql.NullTime
-	err := db.QueryRow("SELECT id, username, handle, is_admin, credits, is_premium, premium_until, membership_tier FROM users WHERE id = ?", userID).
-		Scan(&u.ID, &u.Username, &u.Handle, &u.IsAdmin, &u.Credits, &u.IsPremium, &premiumUntil, &u.MembershipTier)
+	err := db.QueryRow("SELECT id, username, handle, email, phone, is_admin, credits, is_premium, premium_until, membership_tier FROM users WHERE id = ?", userID).
+		Scan(&u.ID, &u.Username, &u.Handle, &u.Email, &u.Phone, &u.IsAdmin, &u.Credits, &u.IsPremium, &premiumUntil, &u.MembershipTier)
 	
 	if err != nil {
 		return nil
@@ -371,9 +413,101 @@ func fetchPosts(query string, args ...interface{}) ([]Post, error) {
 		p.IsBoosted = boosted == 1
 		p.IsFeatured = featured == 1
 		p.CreatedAt = createdAt
+		if p.Tags != "" {
+			p.TagList = strings.Split(p.Tags, ",")
+		}
 		posts = append(posts, p)
 	}
 	return posts, nil
+}
+
+func handleExpressInterest(c *fiber.Ctx) error {
+	currentUser := getCurrentUser(c)
+	if currentUser == nil {
+		return c.Status(401).JSON(fiber.Map{"error": "Please login first"})
+	}
+
+	postID := c.FormValue("post_id")
+	message := c.FormValue("message")
+	postTitle := c.FormValue("post_title")
+
+	if postID == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "Invalid post"})
+	}
+
+	_, err := db.Exec(`INSERT INTO interest_leads (post_id, post_title, user_name, user_email, user_phone, message) 
+		VALUES (?, ?, ?, ?, ?, ?)`,
+		postID, postTitle, currentUser.Username, currentUser.Email, currentUser.Phone, message)
+
+	if err != nil {
+		log.Println("Error saving lead:", err)
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to save interest"})
+	}
+
+	return c.JSON(fiber.Map{"success": true, "message": "Interest registered! Admin will contact the service provider."})
+}
+
+func handleGigApply(c *fiber.Ctx) error {
+	currentUser := getCurrentUser(c)
+	if currentUser == nil {
+		return c.Status(401).JSON(fiber.Map{"error": "Please login first"})
+	}
+
+	gigID := c.FormValue("gig_id")
+	gigTitle := c.FormValue("gig_title")
+	applicantName := c.FormValue("applicant_name")
+	email := c.FormValue("email")
+	phone := c.FormValue("phone")
+	experience := c.FormValue("experience")
+	resumeURL := c.FormValue("resume_url")
+	coverNote := c.FormValue("cover_note")
+
+	if gigID == "" || applicantName == "" || email == "" {
+		return c.Status(400).JSON(fiber.Map{"error": "Required fields missing"})
+	}
+
+	_, err := db.Exec(`INSERT INTO gig_applications (gig_id, gig_title, applicant_name, email, phone, experience, resume_url, cover_note) 
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		gigID, gigTitle, applicantName, email, phone, experience, resumeURL, coverNote)
+
+	if err != nil {
+		log.Println("Error saving application:", err)
+		return c.Status(500).JSON(fiber.Map{"error": "Failed to submit application"})
+	}
+
+	return c.JSON(fiber.Map{"success": true, "message": "Application submitted! Admin will forward to employer."})
+}
+
+func getInterestLeads() []InterestLead {
+	rows, err := db.Query("SELECT id, post_id, post_title, user_name, user_email, user_phone, message, status, created_at FROM interest_leads WHERE status = 'pending' ORDER BY created_at DESC")
+	if err != nil {
+		return []InterestLead{}
+	}
+	defer rows.Close()
+
+	var leads []InterestLead
+	for rows.Next() {
+		var l InterestLead
+		rows.Scan(&l.ID, &l.PostID, &l.PostTitle, &l.UserName, &l.UserEmail, &l.UserPhone, &l.Message, &l.Status, &l.CreatedAt)
+		leads = append(leads, l)
+	}
+	return leads
+}
+
+func getGigApplications() []GigApplication {
+	rows, err := db.Query("SELECT id, gig_id, gig_title, applicant_name, email, phone, experience, resume_url, cover_note, status, applied_at FROM gig_applications WHERE status = 'pending' ORDER BY applied_at DESC")
+	if err != nil {
+		return []GigApplication{}
+	}
+	defer rows.Close()
+
+	var apps []GigApplication
+	for rows.Next() {
+		var a GigApplication
+		rows.Scan(&a.ID, &a.GigID, &a.GigTitle, &a.ApplicantName, &a.Email, &a.Phone, &a.Experience, &a.ResumeURL, &a.CoverNote, &a.Status, &a.AppliedAt)
+		apps = append(apps, a)
+	}
+	return apps
 }
 
 func main() {
@@ -391,12 +525,10 @@ func main() {
 	app.Use(recover.New())
 	app.Use(cors.New())
 
-	// Health check
 	app.Get("/health", func(c *fiber.Ctx) error {
 		return c.JSON(fiber.Map{"status": "ok"})
 	})
 
-	// ====================== SEED ======================
 	app.Get("/seed", func(c *fiber.Ctx) error {
 		db.Exec("DELETE FROM posts")
 		
@@ -431,7 +563,6 @@ func main() {
 		return c.SendString("✅ Dummy data loaded! <a href='/'>Go Home</a>")
 	})
 
-	// ====================== HOME ======================
 	app.Get("/", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
 		marketTrends := getMarketTrends()
@@ -456,7 +587,6 @@ func main() {
 		})
 	})
 
-	// ====================== NEWS PAGE ======================
 	app.Get("/news", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
 		allNews := getAllNews()
@@ -468,7 +598,6 @@ func main() {
 		})
 	})
 
-	// Like news
 	app.Post("/news/like/:id", func(c *fiber.Ctx) error {
 		id := c.Params("id")
 		db.Exec("UPDATE news SET likes = likes + 1 WHERE id = ?", id)
@@ -477,8 +606,6 @@ func main() {
 		return c.SendString(fmt.Sprintf("%d", likes))
 	})
 
-	// ====================== ADMIN NEWS MANAGEMENT ======================
-	// Add news
 	app.Post("/admin/news/add", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
 		if currentUser == nil || !currentUser.IsAdmin {
@@ -501,7 +628,6 @@ func main() {
 		return c.SendString(`✅ News added successfully!<script>window.location.reload()</script>`)
 	})
 
-	// Delete news
 	app.Post("/admin/news/delete/:id", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
 		if currentUser == nil || !currentUser.IsAdmin {
@@ -517,7 +643,6 @@ func main() {
 		return c.SendString("✅ News deleted")
 	})
 
-	// Edit news
 	app.Post("/admin/news/edit/:id", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
 		if currentUser == nil || !currentUser.IsAdmin {
@@ -537,8 +662,6 @@ func main() {
 		return c.SendString(`✅ News updated!<script>window.location.reload()</script>`)
 	})
 
-	// ====================== ADMIN MARKET TRENDS MANAGEMENT ======================
-	// Add market trend
 	app.Post("/admin/trends/add", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
 		if currentUser == nil || !currentUser.IsAdmin {
@@ -560,7 +683,6 @@ func main() {
 		return c.SendString(`✅ Market trend added!<script>window.location.reload()</script>`)
 	})
 
-	// Delete market trend
 	app.Post("/admin/trends/delete/:id", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
 		if currentUser == nil || !currentUser.IsAdmin {
@@ -576,7 +698,6 @@ func main() {
 		return c.SendString("✅ Trend deleted")
 	})
 
-	// Edit market trend
 	app.Post("/admin/trends/edit/:id", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
 		if currentUser == nil || !currentUser.IsAdmin {
@@ -599,7 +720,6 @@ func main() {
 		return c.SendString(`✅ Trend updated!<script>window.location.reload()</script>`)
 	})
 
-	// ====================== SEARCH ======================
 	app.Get("/search", func(c *fiber.Ctx) error {
 		query := c.Query("q")
 		if query == "" {
@@ -626,7 +746,6 @@ func main() {
 		})
 	})
 
-	// ====================== PROFILE ======================
 	app.Get("/profile", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
 		if currentUser == nil {
@@ -653,7 +772,6 @@ func main() {
 		})
 	})
 
-	// ====================== CREATE POST ======================
 	app.Post("/post", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
 		if currentUser == nil {
@@ -697,7 +815,6 @@ func main() {
 		return c.SendString(`<div class="p-4 text-emerald-600">` + msg + `</div><script>window.location.reload()</script>`)
 	})
 
-	// ====================== UPGRADE TO PREMIUM ======================
 	app.Post("/upgrade", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
 		if currentUser == nil {
@@ -780,7 +897,6 @@ func main() {
 		})
 	})
 
-	// ====================== BOOST POST ======================
 	app.Post("/boost/:id", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
 		if currentUser == nil {
@@ -824,7 +940,6 @@ func main() {
 		return c.SendString("✅ Post boosted successfully for 7 days!")
 	})
 
-	// ====================== FEATURE POST ======================
 	app.Post("/feature/:id", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
 		if currentUser == nil {
@@ -868,16 +983,15 @@ func main() {
 		return c.SendString("✅ Post featured for 24 hours! It will appear at the top.")
 	})
 
-// ====================== BUY CREDITS (Placeholder) ======================
-app.Post("/buy-credits", func(c *fiber.Ctx) error {
-    currentUser := getCurrentUser(c)
-    if currentUser == nil {
-        return c.Status(401).SendString("Please login")
-    }
+	app.Post("/buy-credits", func(c *fiber.Ctx) error {
+		currentUser := getCurrentUser(c)
+		if currentUser == nil {
+			return c.Status(401).SendString("Please login")
+		}
 
-    return c.SendString(`<div class="p-4 text-amber-600 text-center">🚧 Payment integration coming soon! This is a demo placeholder.</div>`)
-})
-	// ====================== LIKE POST ======================
+		return c.SendString(`<div class="p-4 text-amber-600 text-center">🚧 Payment integration coming soon! This is a demo placeholder.</div>`)
+	})
+
 	app.Post("/like/:id", func(c *fiber.Ctx) error {
 		id := c.Params("id")
 		_, err := db.Exec("UPDATE posts SET likes = likes + 1 WHERE id = ?", id)
@@ -892,14 +1006,15 @@ app.Post("/buy-credits", func(c *fiber.Ctx) error {
 		return c.SendString(fmt.Sprintf(`<button hx-post="/like/%s" hx-swap="outerHTML" class="flex items-center gap-1.5 text-slate-400 hover:text-red-500 transition-all active:scale-110">❤️ <span class="text-sm font-medium">%d</span></button>`, id, likes))
 	})
 
-	// ====================== ADMIN DASHBOARD ======================
+	app.Post("/express-interest", handleExpressInterest)
+	app.Post("/gig-apply", handleGigApply)
+
 	app.Get("/admin", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
 		if currentUser == nil || !currentUser.IsAdmin {
 			return c.Status(403).SendString("Access denied. Admin only.")
 		}
 
-		// Get pending posts
 		pendingPosts, _ := fetchPosts(`
 			SELECT id, username, handle, content, price, category, tags, image_url, likes, created_at,
 			       CASE WHEN boost_until > datetime('now') THEN 1 ELSE 0 END,
@@ -910,13 +1025,11 @@ app.Post("/buy-credits", func(c *fiber.Ctx) error {
 			ORDER BY created_at DESC
 		`)
 
-		// Get all news for management
 		allNews := getAllNews()
-		
-		// Get all market trends
 		marketTrends := getMarketTrends()
+		interestLeads := getInterestLeads()
+		gigApplications := getGigApplications()
 
-		// Get all users
 		rows, err := db.Query(`
 			SELECT id, username, handle, email, is_admin, credits, is_premium, membership_tier 
 			FROM users ORDER BY id DESC
@@ -936,7 +1049,6 @@ app.Post("/buy-credits", func(c *fiber.Ctx) error {
 			users = append(users, u)
 		}
 
-		// Get stats
 		var totalPosts, totalUsers, totalCreditsSpent int
 		db.QueryRow("SELECT COUNT(*) FROM posts WHERE status = 'approved'").Scan(&totalPosts)
 		db.QueryRow("SELECT COUNT(*) FROM users").Scan(&totalUsers)
@@ -951,10 +1063,11 @@ app.Post("/buy-credits", func(c *fiber.Ctx) error {
 			"TotalCreditsSpent":  totalCreditsSpent,
 			"AllNews":            allNews,
 			"MarketTrends":       marketTrends,
+			"InterestLeads":      interestLeads,
+			"GigApplications":    gigApplications,
 		})
 	})
 
-	// Approve post
 	app.Post("/admin/approve/:id", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
 		if currentUser == nil || !currentUser.IsAdmin {
@@ -969,7 +1082,6 @@ app.Post("/buy-credits", func(c *fiber.Ctx) error {
 		return c.SendString("✅ Post approved")
 	})
 
-	// Delete post
 	app.Post("/admin/delete/:id", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
 		if currentUser == nil || !currentUser.IsAdmin {
@@ -984,7 +1096,6 @@ app.Post("/buy-credits", func(c *fiber.Ctx) error {
 		return c.SendString("✅ Post deleted")
 	})
 
-	// Give credits to user
 	app.Post("/admin/give-credits", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
 		if currentUser == nil || !currentUser.IsAdmin {
@@ -1008,7 +1119,34 @@ app.Post("/buy-credits", func(c *fiber.Ctx) error {
 		return c.SendString(fmt.Sprintf("✅ Added %d credits to user", creditsInt))
 	})
 
-	// ====================== AUTH ======================
+	app.Post("/admin/lead/:id/:status", func(c *fiber.Ctx) error {
+		currentUser := getCurrentUser(c)
+		if currentUser == nil || !currentUser.IsAdmin {
+			return c.Status(403).SendString("Access denied")
+		}
+		id := c.Params("id")
+		status := c.Params("status")
+		_, err := db.Exec("UPDATE interest_leads SET status = ? WHERE id = ?", status, id)
+		if err != nil {
+			return c.Status(500).SendString("Error updating lead")
+		}
+		return c.SendString("Lead updated")
+	})
+
+	app.Post("/admin/application/:id/:status", func(c *fiber.Ctx) error {
+		currentUser := getCurrentUser(c)
+		if currentUser == nil || !currentUser.IsAdmin {
+			return c.Status(403).SendString("Access denied")
+		}
+		id := c.Params("id")
+		status := c.Params("status")
+		_, err := db.Exec("UPDATE gig_applications SET status = ? WHERE id = ?", status, id)
+		if err != nil {
+			return c.Status(500).SendString("Error updating application")
+		}
+		return c.SendString("Application updated")
+	})
+
 	app.Post("/login", func(c *fiber.Ctx) error {
 		email := c.FormValue("email")
 		password := c.FormValue("password")
@@ -1036,6 +1174,7 @@ app.Post("/buy-credits", func(c *fiber.Ctx) error {
 		username := c.FormValue("username")
 		handle := c.FormValue("handle")
 		email := c.FormValue("email")
+		phone := c.FormValue("phone")
 		password := c.FormValue("password")
 
 		if len(password) < 6 {
@@ -1043,8 +1182,8 @@ app.Post("/buy-credits", func(c *fiber.Ctx) error {
 		}
 
 		hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-		_, err := db.Exec(`INSERT INTO users (username, handle, email, password_hash, credits) VALUES (?, ?, ?, ?, ?)`,
-			username, handle, email, hash, 500)
+		_, err := db.Exec(`INSERT INTO users (username, handle, email, phone, password_hash, credits) VALUES (?, ?, ?, ?, ?, ?)`,
+			username, handle, email, phone, hash, 500)
 		if err != nil {
 			return c.SendString(`<div class="p-4 text-red-500 text-center">Handle or email already taken</div>`)
 		}
@@ -1057,12 +1196,11 @@ app.Post("/buy-credits", func(c *fiber.Ctx) error {
 		return c.SendString(`<div class="p-4 text-center">Logged out successfully<script>window.location.reload()</script></div>`)
 	})
 
-// Get port from environment (Render sets this)
-port := os.Getenv("PORT")
-if port == "" {
-    port = "3000"
-}
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
 
-log.Printf("🚀 Server running on http://localhost:%s", port)
-log.Fatal(app.Listen(":" + port))
+	log.Printf("🚀 Server running on http://localhost:%s", port)
+	log.Fatal(app.Listen(":" + port))
 }
