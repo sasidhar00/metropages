@@ -178,7 +178,7 @@
                             <p class="text-slate-600 text-sm">{{.Content}}</p>
                         </div>
                         <div class="flex gap-2">
-                            <button onclick="editNews({{.ID}}, '{{.Title}}', ` + "`{{.Content}}`" + `, '{{.Category}}')" 
+                            <button onclick="editNews({{.ID}}, '{{.Title}}', '{{.Content}}', '{{.Category}}')"  
                                     class="text-blue-500 hover:text-blue-700 text-sm">Edit</button>
                             <button onclick="deleteNews({{.ID}})" 
                                     class="text-red-500 hover:text-red-700 text-sm">Delete</button>
