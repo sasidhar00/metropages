@@ -7,17 +7,18 @@ import (
 	"log"
 	"strings"
 	"time"
-    "os"
-	"libsql"
+        "os"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/template/html/v2"
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/tursodatabase/libsql-client-go/libsql"
-	_ "github.com/tursodatabase/libsql-client-go/libsql"
+        _ "github.com/tursodatabase/libsql-client-go/libsql"
 	"golang.org/x/crypto/bcrypt"
+        
+        "github.com/joho/godotenv"
+
 )
 
 type Post struct {
@@ -58,30 +59,51 @@ type NewsItem struct {
 	Likes     int
 }
 
+type MarketTrend struct {
+	ID          int
+	Title       string
+	Description string
+	Trend       string // up, down, stable
+	Percentage  string
+	Category    string
+}
+
 var db *sql.DB
 
 func initDB() {
-	// Get Turso credentials from environment variables
-	tursoURL := os.Getenv("TURSO_DATABASE_URL")
-	tursoAuthToken := os.Getenv("TURSO_AUTH_TOKEN")
-	
-	if tursoURL == "" {
-		log.Fatal("TURSO_DATABASE_URL environment variable is required")
+	// Load .env file
+	if err := godotenv.Load(); err != nil {
+		log.Println("⚠️ No .env file found, using environment variables")
 	}
-	
+
+	// Get Turso credentials
+	dbURL := os.Getenv("TURSO_DB_URL")
+	authToken := os.Getenv("TURSO_AUTH_TOKEN")
+
 	var err error
-	// Connect to Turso (libSQL)
-	db, err = libsql.Open("libsql", tursoURL+"?authToken="+tursoAuthToken)
-	if err != nil {
-		log.Fatal("Error connecting to Turso:", err)
-	}
 	
-	// Test the connection
-	err = db.Ping()
-	if err != nil {
-		log.Fatal("Error pinging Turso database:", err)
+	if dbURL != "" && authToken != "" {
+		// Production: Use Turso
+		log.Println("🔗 Connecting to Turso database...")
+		db, err = sql.Open("libsql", dbURL+"?authToken="+authToken)
+		if err != nil {
+			log.Fatal("Error connecting to Turso:", err)
+		}
+		log.Println("✅ Connected to Turso successfully!")
+	} else {
+		// Local development: Use SQLite
+		log.Println("📁 Using SQLite for local development")
+		db, err = sql.Open("sqlite3", "./metropages.db")
+		if err != nil {
+			log.Fatal("Error opening SQLite:", err)
+		}
 	}
-	log.Println("✅ Connected to Turso database")
+
+	// Test connection
+	if err := db.Ping(); err != nil {
+		log.Fatal("Database ping failed:", err)
+	}
+
 	// Create tables
 	createTablesSQL := `
 		CREATE TABLE IF NOT EXISTS posts (
@@ -120,6 +142,16 @@ func initDB() {
 			content TEXT,
 			category TEXT,
 			likes INTEGER DEFAULT 0,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);
+
+		CREATE TABLE IF NOT EXISTS market_trends (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			title TEXT,
+			description TEXT,
+			trend TEXT,
+			percentage TEXT,
+			category TEXT,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		);
 
@@ -166,13 +198,31 @@ func initDB() {
 			{"📊 Market Trend", "HMDA approvals for new projects hit all-time high. 50+ projects approved.", "real-estate"},
 			{"⚡ Quick Hire", "Top companies now hiring through metropages platform. 1000+ jobs available.", "gig"},
 			{"🏗️ New Launch", "Luxury villas launching next week in Zaheerabad. Pre-booking opens tomorrow.", "real-estate"},
-			{"💻 Tech Hiring", "Software developers in high demand. Salaries up 25% year over year.", "gig"},
-			{"🏢 Commercial Space", "Office space demand rising in Hitech City. 30% increase in leases.", "real-estate"},
 		}
 		for _, news := range newsData {
 			db.Exec("INSERT INTO news (title, content, category) VALUES (?, ?, ?)", news.title, news.content, news.category)
 		}
 		log.Println("✅ Seeded", len(newsData), "news articles")
+	}
+
+	// Seed market trends if empty
+	var trendsCount int
+	db.QueryRow("SELECT COUNT(*) FROM market_trends").Scan(&trendsCount)
+	if trendsCount == 0 {
+		trendsData := []struct {
+			title, description, trend, percentage, category string
+		}{
+			{"Zaheerabad Farms", "Premium plotted development with DTCP approval", "up", "+23%", "real-estate"},
+			{"Remote Work", "Work from home opportunities across IT sector", "up", "+45%", "gig"},
+			{"Full-time Development", "Software developers in high demand", "up", "+32%", "gig"},
+			{"Commercial Space", "Office space demand in Hitech City", "up", "+18%", "real-estate"},
+			{"Freelance Economy", "Gig workers shifting to freelance model", "stable", "0%", "gig"},
+		}
+		for _, trend := range trendsData {
+			db.Exec("INSERT INTO market_trends (title, description, trend, percentage, category) VALUES (?, ?, ?, ?, ?)",
+				trend.title, trend.description, trend.trend, trend.percentage, trend.category)
+		}
+		log.Println("✅ Seeded", len(trendsData), "market trends")
 	}
 }
 
@@ -264,6 +314,23 @@ func getAllNews() []NewsItem {
 	return newsList
 }
 
+func getMarketTrends() []MarketTrend {
+	rows, err := db.Query("SELECT id, title, description, trend, percentage, category FROM market_trends ORDER BY created_at DESC")
+	if err != nil {
+		log.Println("Error fetching market trends:", err)
+		return []MarketTrend{}
+	}
+	defer rows.Close()
+
+	var trends []MarketTrend
+	for rows.Next() {
+		var t MarketTrend
+		rows.Scan(&t.ID, &t.Title, &t.Description, &t.Trend, &t.Percentage, &t.Category)
+		trends = append(trends, t)
+	}
+	return trends
+}
+
 func detectTags(content, category string) string {
 	var detectedTags []string
 	
@@ -342,7 +409,6 @@ func main() {
 			{"Swift Logistics", "swiftlogistics", "Need 2 experienced drivers for NIMZ project. Full-time position with good salary.", "₹35,000/month", "Gig", "Full-time,Urgent Hiring,Experienced", "https://picsum.photos/id/201/800/450", true, false, 1},
 			{"Luxury Plots", "plotking", "DTCP approved 200 sqyd plots in Zaheerabad Farms. Premium location.", "₹45,000/sqyd", "Real Estate", "DTCP,Premium,Clear Title", "https://picsum.photos/id/133/800/450", false, false, 1},
 			{"Modern Interiors", "interiorshub", "Complete modular kitchen and wardrobe installation. Work from home consultation.", "Contact Owner", "Gig", "Work from Home,Flexible Hours", "https://picsum.photos/id/180/800/450", false, false, 1},
-			{"Tech Solutions", "techgigs", "Looking for freelance web developers for e-commerce project. Remote work.", "₹50,000 - ₹80,000", "Gig", "Freelance,Remote,Flexible Hours", "https://picsum.photos/id/0/800/450", false, false, 1},
 		}
 
 		for _, d := range dummyData {
@@ -368,6 +434,7 @@ func main() {
 	// ====================== HOME ======================
 	app.Get("/", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
+		marketTrends := getMarketTrends()
 
 		posts, _ := fetchPosts(`
 			SELECT id, username, handle, content, price, category, tags, image_url, likes, created_at,
@@ -385,6 +452,7 @@ func main() {
 			"IsProfile":    false,
 			"SearchQuery":  "",
 			"IsAdmin":      currentUser != nil && currentUser.IsAdmin,
+			"MarketTrends": marketTrends,
 		})
 	})
 
@@ -407,6 +475,128 @@ func main() {
 		var likes int
 		db.QueryRow("SELECT likes FROM news WHERE id = ?", id).Scan(&likes)
 		return c.SendString(fmt.Sprintf("%d", likes))
+	})
+
+	// ====================== ADMIN NEWS MANAGEMENT ======================
+	// Add news
+	app.Post("/admin/news/add", func(c *fiber.Ctx) error {
+		currentUser := getCurrentUser(c)
+		if currentUser == nil || !currentUser.IsAdmin {
+			return c.Status(403).SendString("Access denied")
+		}
+
+		title := c.FormValue("title")
+		content := c.FormValue("content")
+		category := c.FormValue("category")
+
+		if title == "" || content == "" {
+			return c.Status(400).SendString("Title and content are required")
+		}
+
+		_, err := db.Exec("INSERT INTO news (title, content, category) VALUES (?, ?, ?)", title, content, category)
+		if err != nil {
+			return c.Status(500).SendString("Error adding news")
+		}
+
+		return c.SendString(`✅ News added successfully!<script>window.location.reload()</script>`)
+	})
+
+	// Delete news
+	app.Post("/admin/news/delete/:id", func(c *fiber.Ctx) error {
+		currentUser := getCurrentUser(c)
+		if currentUser == nil || !currentUser.IsAdmin {
+			return c.Status(403).SendString("Access denied")
+		}
+
+		id := c.Params("id")
+		_, err := db.Exec("DELETE FROM news WHERE id = ?", id)
+		if err != nil {
+			return c.Status(500).SendString("Error deleting news")
+		}
+
+		return c.SendString("✅ News deleted")
+	})
+
+	// Edit news
+	app.Post("/admin/news/edit/:id", func(c *fiber.Ctx) error {
+		currentUser := getCurrentUser(c)
+		if currentUser == nil || !currentUser.IsAdmin {
+			return c.Status(403).SendString("Access denied")
+		}
+
+		id := c.Params("id")
+		title := c.FormValue("title")
+		content := c.FormValue("content")
+		category := c.FormValue("category")
+
+		_, err := db.Exec("UPDATE news SET title = ?, content = ?, category = ? WHERE id = ?", title, content, category, id)
+		if err != nil {
+			return c.Status(500).SendString("Error updating news")
+		}
+
+		return c.SendString(`✅ News updated!<script>window.location.reload()</script>`)
+	})
+
+	// ====================== ADMIN MARKET TRENDS MANAGEMENT ======================
+	// Add market trend
+	app.Post("/admin/trends/add", func(c *fiber.Ctx) error {
+		currentUser := getCurrentUser(c)
+		if currentUser == nil || !currentUser.IsAdmin {
+			return c.Status(403).SendString("Access denied")
+		}
+
+		title := c.FormValue("title")
+		description := c.FormValue("description")
+		trend := c.FormValue("trend")
+		percentage := c.FormValue("percentage")
+		category := c.FormValue("category")
+
+		_, err := db.Exec("INSERT INTO market_trends (title, description, trend, percentage, category) VALUES (?, ?, ?, ?, ?)",
+			title, description, trend, percentage, category)
+		if err != nil {
+			return c.Status(500).SendString("Error adding trend")
+		}
+
+		return c.SendString(`✅ Market trend added!<script>window.location.reload()</script>`)
+	})
+
+	// Delete market trend
+	app.Post("/admin/trends/delete/:id", func(c *fiber.Ctx) error {
+		currentUser := getCurrentUser(c)
+		if currentUser == nil || !currentUser.IsAdmin {
+			return c.Status(403).SendString("Access denied")
+		}
+
+		id := c.Params("id")
+		_, err := db.Exec("DELETE FROM market_trends WHERE id = ?", id)
+		if err != nil {
+			return c.Status(500).SendString("Error deleting trend")
+		}
+
+		return c.SendString("✅ Trend deleted")
+	})
+
+	// Edit market trend
+	app.Post("/admin/trends/edit/:id", func(c *fiber.Ctx) error {
+		currentUser := getCurrentUser(c)
+		if currentUser == nil || !currentUser.IsAdmin {
+			return c.Status(403).SendString("Access denied")
+		}
+
+		id := c.Params("id")
+		title := c.FormValue("title")
+		description := c.FormValue("description")
+		trend := c.FormValue("trend")
+		percentage := c.FormValue("percentage")
+		category := c.FormValue("category")
+
+		_, err := db.Exec("UPDATE market_trends SET title = ?, description = ?, trend = ?, percentage = ?, category = ? WHERE id = ?",
+			title, description, trend, percentage, category, id)
+		if err != nil {
+			return c.Status(500).SendString("Error updating trend")
+		}
+
+		return c.SendString(`✅ Trend updated!<script>window.location.reload()</script>`)
 	})
 
 	// ====================== SEARCH ======================
@@ -432,6 +622,7 @@ func main() {
 			"SearchQuery":  query,
 			"IsProfile":    false,
 			"IsAdmin":      false,
+			"MarketTrends": getMarketTrends(),
 		})
 	})
 
@@ -458,6 +649,7 @@ func main() {
 			"IsProfile":    true,
 			"SearchQuery":  "",
 			"IsAdmin":      currentUser.IsAdmin,
+			"MarketTrends": getMarketTrends(),
 		})
 	})
 
@@ -539,7 +731,6 @@ func main() {
 		}
 		defer tx.Rollback()
 
-		// Deduct credits
 		_, err = tx.Exec("UPDATE users SET credits = credits - ? WHERE id = ?", cost, currentUser.ID)
 		if err != nil {
 			return c.Status(500).JSON(fiber.Map{
@@ -548,7 +739,6 @@ func main() {
 			})
 		}
 
-		// Set premium membership for 30 days
 		premiumUntil := time.Now().Add(30 * 24 * time.Hour)
 		_, err = tx.Exec("UPDATE users SET is_premium = true, premium_until = ?, membership_tier = 'premium' WHERE id = ?",
 			premiumUntil, currentUser.ID)
@@ -559,20 +749,17 @@ func main() {
 			})
 		}
 
-		// Add bonus credits for upgrading (100 bonus credits)
 		_, err = tx.Exec("UPDATE users SET credits = credits + 100 WHERE id = ?", currentUser.ID)
 		if err != nil {
 			log.Println("Error adding bonus credits:", err)
 		}
 
-		// Log transaction
 		_, err = tx.Exec("INSERT INTO transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)",
 			currentUser.ID, cost, "debit", "Premium membership upgrade (30 days)")
 		if err != nil {
 			log.Println("Error logging transaction:", err)
 		}
 
-		// Log bonus
 		_, err = tx.Exec("INSERT INTO transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)",
 			currentUser.ID, 100, "credit", "Welcome bonus for upgrading to premium")
 		if err != nil {
@@ -613,19 +800,16 @@ func main() {
 		}
 		defer tx.Rollback()
 
-		// Deduct credits
 		_, err = tx.Exec("UPDATE users SET credits = credits - ? WHERE id = ?", cost, currentUser.ID)
 		if err != nil {
 			return c.Status(500).SendString("Error updating credits")
 		}
 
-		// Boost post (7 days)
 		_, err = tx.Exec(`UPDATE posts SET boost_until = datetime('now', '+7 days') WHERE id = ?`, id)
 		if err != nil {
 			return c.Status(500).SendString("Boost failed")
 		}
 
-		// Log transaction
 		_, err = tx.Exec("INSERT INTO transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)",
 			currentUser.ID, cost, "debit", "Post boost (7 days)")
 		if err != nil {
@@ -660,19 +844,16 @@ func main() {
 		}
 		defer tx.Rollback()
 
-		// Deduct credits
 		_, err = tx.Exec("UPDATE users SET credits = credits - ? WHERE id = ?", cost, currentUser.ID)
 		if err != nil {
 			return c.Status(500).SendString("Error updating credits")
 		}
 
-		// Feature post (24 hours)
 		_, err = tx.Exec(`UPDATE posts SET featured_until = datetime('now', '+1 day') WHERE id = ?`, id)
 		if err != nil {
 			return c.Status(500).SendString("Feature failed")
 		}
 
-		// Log transaction
 		_, err = tx.Exec("INSERT INTO transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)",
 			currentUser.ID, cost, "debit", "Featured listing (24 hours)")
 		if err != nil {
@@ -687,51 +868,15 @@ func main() {
 		return c.SendString("✅ Post featured for 24 hours! It will appear at the top.")
 	})
 
-	// ====================== BUY CREDITS ======================
-	app.Post("/buy-credits", func(c *fiber.Ctx) error {
-		currentUser := getCurrentUser(c)
-		if currentUser == nil {
-			return c.Status(401).SendString("Please login")
-		}
+// ====================== BUY CREDITS (Placeholder) ======================
+app.Post("/buy-credits", func(c *fiber.Ctx) error {
+    currentUser := getCurrentUser(c)
+    if currentUser == nil {
+        return c.Status(401).SendString("Please login")
+    }
 
-		packageType := c.FormValue("package")
-		var credits, amount int
-
-		switch packageType {
-		case "small":
-			credits, amount = 500, 499
-		case "large":
-			credits, amount = 1200, 999
-		default:
-			return c.Status(400).SendString("Invalid package")
-		}
-
-		tx, err := db.Begin()
-		if err != nil {
-			return c.Status(500).SendString("Error starting transaction")
-		}
-		defer tx.Rollback()
-
-		_, err = tx.Exec("UPDATE users SET credits = credits + ? WHERE id = ?", credits, currentUser.ID)
-		if err != nil {
-			return c.Status(500).SendString("Error processing payment")
-		}
-
-		// Log transaction
-		_, err = tx.Exec("INSERT INTO transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)",
-			currentUser.ID, amount, "credit", fmt.Sprintf("Purchased %d credits", credits))
-		if err != nil {
-			log.Println("Error logging transaction:", err)
-		}
-
-		err = tx.Commit()
-		if err != nil {
-			return c.Status(500).SendString("Error committing transaction")
-		}
-
-		return c.SendString(fmt.Sprintf(`✅ Success! Added %d credits to your account.<script>window.location.reload()</script>`, credits))
-	})
-
+    return c.SendString(`<div class="p-4 text-amber-600 text-center">🚧 Payment integration coming soon! This is a demo placeholder.</div>`)
+})
 	// ====================== LIKE POST ======================
 	app.Post("/like/:id", func(c *fiber.Ctx) error {
 		id := c.Params("id")
@@ -764,6 +909,12 @@ func main() {
 			WHERE status = 'pending'
 			ORDER BY created_at DESC
 		`)
+
+		// Get all news for management
+		allNews := getAllNews()
+		
+		// Get all market trends
+		marketTrends := getMarketTrends()
 
 		// Get all users
 		rows, err := db.Query(`
@@ -798,6 +949,8 @@ func main() {
 			"TotalPosts":         totalPosts,
 			"TotalUsers":         totalUsers,
 			"TotalCreditsSpent":  totalCreditsSpent,
+			"AllNews":            allNews,
+			"MarketTrends":       marketTrends,
 		})
 	})
 
@@ -904,6 +1057,12 @@ func main() {
 		return c.SendString(`<div class="p-4 text-center">Logged out successfully<script>window.location.reload()</script></div>`)
 	})
 
-	log.Println("🚀 Server running on http://localhost:3000")
-	log.Fatal(app.Listen(":3000"))
+// Get port from environment (Render sets this)
+port := os.Getenv("PORT")
+if port == "" {
+    port = "3000"
+}
+
+log.Printf("🚀 Server running on http://localhost:%s", port)
+log.Fatal(app.Listen(":" + port))
 }
