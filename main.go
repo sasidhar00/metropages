@@ -58,12 +58,27 @@ type NewsItem struct {
 var db *sql.DB
 
 func initDB() {
-	var err error
-	db, err = sql.Open("sqlite3", "./metropages.db")
-	if err != nil {
-		log.Fatal("Error opening database:", err)
+	// Get Turso credentials from environment variables
+	tursoURL := os.Getenv("TURSO_DATABASE_URL")
+	tursoAuthToken := os.Getenv("TURSO_AUTH_TOKEN")
+	
+	if tursoURL == "" {
+		log.Fatal("TURSO_DATABASE_URL environment variable is required")
 	}
-
+	
+	var err error
+	// Connect to Turso (libSQL)
+	db, err = libsql.Open("libsql", tursoURL+"?authToken="+tursoAuthToken)
+	if err != nil {
+		log.Fatal("Error connecting to Turso:", err)
+	}
+	
+	// Test the connection
+	err = db.Ping()
+	if err != nil {
+		log.Fatal("Error pinging Turso database:", err)
+	}
+	log.Println("✅ Connected to Turso database")
 	// Create tables
 	createTablesSQL := `
 		CREATE TABLE IF NOT EXISTS posts (
