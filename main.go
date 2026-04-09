@@ -7,7 +7,10 @@ import (
 	"log"
 	"strings"
 	"time"
-        "os"
+	"os"
+	"crypto/sha256"
+	"encoding/hex"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
@@ -18,7 +21,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
         
         "github.com/joho/godotenv"
-
 )
 
 type Post struct {
@@ -43,9 +45,11 @@ type User struct {
 	Username      string
 	Handle        string
 	Email         string
+	Phone         string
 	IsAdmin       bool
 	Credits       int
 	IsPremium     bool
+	IsActive      bool
 	PremiumUntil  *time.Time
 	MembershipTier string
 }
@@ -63,9 +67,17 @@ type MarketTrend struct {
 	ID          int
 	Title       string
 	Description string
-	Trend       string // up, down, stable
+	Trend       string
 	Percentage  string
 	Category    string
+}
+
+type PasswordReset struct {
+	ID        int
+	Email     string
+	Token     string
+	ExpiresAt time.Time
+	Used      bool
 }
 
 var db *sql.DB
@@ -128,10 +140,12 @@ func initDB() {
 			username TEXT UNIQUE,
 			handle TEXT UNIQUE,
 			email TEXT UNIQUE,
+			phone TEXT DEFAULT '',
 			password_hash TEXT,
 			is_admin BOOLEAN DEFAULT FALSE,
 			credits INTEGER DEFAULT 500,
 			is_premium BOOLEAN DEFAULT FALSE,
+			is_active BOOLEAN DEFAULT TRUE,
 			premium_until DATETIME,
 			membership_tier TEXT DEFAULT 'free'
 		);
@@ -163,6 +177,15 @@ func initDB() {
 			description TEXT,
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		);
+
+		CREATE TABLE IF NOT EXISTS password_resets (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			email TEXT,
+			token TEXT,
+			expires_at DATETIME,
+			used BOOLEAN DEFAULT FALSE,
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		);
 	`
 
 	_, err = db.Exec(createTablesSQL)
@@ -176,9 +199,9 @@ func initDB() {
 	db.QueryRow("SELECT COUNT(*) FROM users WHERE is_admin = 1").Scan(&adminCount)
 	if adminCount == 0 {
 		hash, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
-		_, err = db.Exec(`INSERT INTO users (username, handle, email, password_hash, is_admin, credits, is_premium, membership_tier) 
-		         VALUES (?,?,?,?,?,?,?,?)`, 
-			"MetroPages Admin", "metropages", "admin@metropages.com", hash, true, 9999, true, "premium")
+		_, err = db.Exec(`INSERT INTO users (username, handle, email, phone, password_hash, is_admin, credits, is_premium, membership_tier) 
+		         VALUES (?,?,?,?,?,?,?,?,?)`, 
+			"MetroPages Admin", "metropages", "admin@metropages.com", "9999999999", hash, true, 9999, true, "premium")
 		if err != nil {
 			log.Println("Warning: Could not create admin user:", err)
 		} else {
@@ -270,10 +293,14 @@ func getCurrentUser(c *fiber.Ctx) *User {
 
 	var u User
 	var premiumUntil sql.NullTime
-	err := db.QueryRow("SELECT id, username, handle, is_admin, credits, is_premium, premium_until, membership_tier FROM users WHERE id = ?", userID).
-		Scan(&u.ID, &u.Username, &u.Handle, &u.IsAdmin, &u.Credits, &u.IsPremium, &premiumUntil, &u.MembershipTier)
+	err := db.QueryRow("SELECT id, username, handle, email, COALESCE(phone, ''), is_admin, credits, is_premium, COALESCE(is_active, 1), premium_until, membership_tier FROM users WHERE id = ?", userID).
+		Scan(&u.ID, &u.Username, &u.Handle, &u.Email, &u.Phone, &u.IsAdmin, &u.Credits, &u.IsPremium, &u.IsActive, &premiumUntil, &u.MembershipTier)
 	
 	if err != nil {
+		return nil
+	}
+	
+	if !u.IsActive {
 		return nil
 	}
 	
@@ -478,7 +505,6 @@ func main() {
 	})
 
 	// ====================== ADMIN NEWS MANAGEMENT ======================
-	// Add news
 	app.Post("/admin/news/add", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
 		if currentUser == nil || !currentUser.IsAdmin {
@@ -501,7 +527,6 @@ func main() {
 		return c.SendString(`✅ News added successfully!<script>window.location.reload()</script>`)
 	})
 
-	// Delete news
 	app.Post("/admin/news/delete/:id", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
 		if currentUser == nil || !currentUser.IsAdmin {
@@ -517,7 +542,6 @@ func main() {
 		return c.SendString("✅ News deleted")
 	})
 
-	// Edit news
 	app.Post("/admin/news/edit/:id", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
 		if currentUser == nil || !currentUser.IsAdmin {
@@ -538,7 +562,6 @@ func main() {
 	})
 
 	// ====================== ADMIN MARKET TRENDS MANAGEMENT ======================
-	// Add market trend
 	app.Post("/admin/trends/add", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
 		if currentUser == nil || !currentUser.IsAdmin {
@@ -560,7 +583,6 @@ func main() {
 		return c.SendString(`✅ Market trend added!<script>window.location.reload()</script>`)
 	})
 
-	// Delete market trend
 	app.Post("/admin/trends/delete/:id", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
 		if currentUser == nil || !currentUser.IsAdmin {
@@ -576,7 +598,6 @@ func main() {
 		return c.SendString("✅ Trend deleted")
 	})
 
-	// Edit market trend
 	app.Post("/admin/trends/edit/:id", func(c *fiber.Ctx) error {
 		currentUser := getCurrentUser(c)
 		if currentUser == nil || !currentUser.IsAdmin {
@@ -695,6 +716,178 @@ func main() {
 		}
 		
 		return c.SendString(`<div class="p-4 text-emerald-600">` + msg + `</div><script>window.location.reload()</script>`)
+	})
+
+	// ====================== FORGOT PASSWORD ======================
+	app.Get("/forgot-password", func(c *fiber.Ctx) error {
+		return c.Render("forgot-password", fiber.Map{
+			"CurrentUser": getCurrentUser(c),
+		})
+	})
+
+	app.Post("/forgot-password", func(c *fiber.Ctx) error {
+		email := c.FormValue("email")
+		
+		// Check if user exists
+		var userID int
+		err := db.QueryRow("SELECT id FROM users WHERE email = ? AND is_active = 1", email).Scan(&userID)
+		if err != nil {
+			// Don't reveal if email exists or not (security)
+			return c.SendString(`<div class="p-4 text-emerald-600 text-center">If your email exists, you will receive a reset link.</div>`)
+		}
+		
+		// Generate reset token
+		
+		token := fmt.Sprintf("%d_%s", time.Now().UnixNano(), email)
+		hash := sha256.Sum256([]byte(token))
+		hashToken := hex.EncodeToString(hash[:])
+		
+		// Store token (expires in 1 hour)
+		expiresAt := time.Now().Add(1 * time.Hour)
+		_, err = db.Exec(`INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)`, 
+			email, hashToken, expiresAt)
+		
+		if err != nil {
+			log.Println("Error saving reset token:", err)
+			return c.Status(500).SendString("Internal error")
+		}
+		
+		// In production, send email here
+		// For demo, show the reset link directly
+		resetLink := fmt.Sprintf("/reset-password?token=%s", token)
+		
+		return c.SendString(fmt.Sprintf(`
+			<div class="p-4 text-emerald-600 text-center">
+				✅ Reset link generated!<br>
+				<a href="%s" class="text-[#1d9bf0] underline">Click here to reset your password</a>
+				<p class="text-xs text-slate-400 mt-2">(In production, this would be emailed to you)</p>
+			</div>
+		`, resetLink))
+	})
+
+	// ====================== RESET PASSWORD ======================
+	app.Get("/reset-password", func(c *fiber.Ctx) error {
+		token := c.Query("token")
+		if token == "" {
+			return c.Redirect("/")
+		}
+		
+		// Hash the token to match stored value
+		hash := sha256.Sum256([]byte(token))
+		hashToken := hex.EncodeToString(hash[:])
+		
+		// Verify token
+		var email string
+		var expiresAt time.Time
+		err := db.QueryRow(`SELECT email, expires_at FROM password_resets WHERE token = ? AND used = FALSE AND expires_at > datetime('now')`,
+			hashToken).Scan(&email, &expiresAt)
+		
+		if err != nil {
+			return c.SendString(`<div class="p-4 text-red-500 text-center">Invalid or expired reset link. Please try again.</div>`)
+		}
+		
+		return c.Render("reset-password", fiber.Map{
+			"Token": token,
+			"Email": email,
+		})
+	})
+
+	app.Post("/reset-password", func(c *fiber.Ctx) error {
+		token := c.FormValue("token")
+		password := c.FormValue("password")
+		
+		if len(password) < 6 {
+			return c.SendString(`<div class="p-4 text-red-500 text-center">Password must be at least 6 characters</div>`)
+		}
+		
+		// Hash the token
+		hash := sha256.Sum256([]byte(token))
+		hashToken := hex.EncodeToString(hash[:])
+		
+		// Get email from token
+		var email string
+		err := db.QueryRow(`SELECT email FROM password_resets WHERE token = ? AND used = FALSE AND expires_at > datetime('now')`,
+			hashToken).Scan(&email)
+		
+		if err != nil {
+			return c.SendString(`<div class="p-4 text-red-500 text-center">Invalid or expired reset link</div>`)
+		}
+		
+		// Update password
+		hashPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		_, err = db.Exec("UPDATE users SET password_hash = ? WHERE email = ?", hashPassword, email)
+		if err != nil {
+			return c.Status(500).SendString("Error updating password")
+		}
+		
+		// Mark token as used
+		db.Exec("UPDATE password_resets SET used = TRUE WHERE token = ?", hashToken)
+		
+		return c.SendString(`<div class="p-4 text-emerald-600 text-center">Password reset successfully! <a href="/" class="text-[#1d9bf0]">Login now</a></div>`)
+	})
+
+	// ====================== USER MANAGEMENT API (ADMIN) ======================
+	app.Get("/admin/users", func(c *fiber.Ctx) error {
+		currentUser := getCurrentUser(c)
+		if currentUser == nil || !currentUser.IsAdmin {
+			return c.Status(403).SendString("Access denied")
+		}
+		
+		rows, err := db.Query(`SELECT id, username, handle, email, COALESCE(phone, ''), is_admin, credits, is_premium, COALESCE(is_active, 1) FROM users ORDER BY id DESC`)
+		if err != nil {
+			return c.Status(500).SendString("Error fetching users")
+		}
+		defer rows.Close()
+		
+		var users []map[string]interface{}
+		for rows.Next() {
+			var id, credits int
+			var username, handle, email, phone string
+			var isAdmin, isPremium, isActive bool
+			rows.Scan(&id, &username, &handle, &email, &phone, &isAdmin, &credits, &isPremium, &isActive)
+			users = append(users, map[string]interface{}{
+				"id": id, "username": username, "handle": handle, "email": email, "phone": phone,
+				"is_admin": isAdmin, "credits": credits, "is_premium": isPremium, "is_active": isActive,
+			})
+		}
+		
+		return c.JSON(users)
+	})
+
+	app.Post("/admin/user/update", func(c *fiber.Ctx) error {
+		currentUser := getCurrentUser(c)
+		if currentUser == nil || !currentUser.IsAdmin {
+			return c.Status(403).SendString("Access denied")
+		}
+		
+		userID := c.FormValue("user_id")
+		credits := c.FormValue("credits")
+		isPremium := c.FormValue("is_premium") == "on"
+		isActive := c.FormValue("is_active") == "on"
+		
+		var creditsInt int
+		fmt.Sscanf(credits, "%d", &creditsInt)
+		
+		_, err := db.Exec("UPDATE users SET credits = ?, is_premium = ?, is_active = ? WHERE id = ?", 
+			creditsInt, isPremium, isActive, userID)
+		if err != nil {
+			return c.Status(500).SendString("Error updating user")
+		}
+		
+		return c.SendString("✅ User updated")
+	})
+
+	app.Post("/admin/user/delete/:id", func(c *fiber.Ctx) error {
+		currentUser := getCurrentUser(c)
+		if currentUser == nil || !currentUser.IsAdmin {
+			return c.Status(403).SendString("Access denied")
+		}
+		
+		id := c.Params("id")
+		db.Exec("DELETE FROM users WHERE id = ?", id)
+		db.Exec("DELETE FROM posts WHERE user_id = ?", id)
+		
+		return c.SendString("✅ User deleted")
 	})
 
 	// ====================== UPGRADE TO PREMIUM ======================
@@ -868,15 +1061,16 @@ func main() {
 		return c.SendString("✅ Post featured for 24 hours! It will appear at the top.")
 	})
 
-// ====================== BUY CREDITS (Placeholder) ======================
-app.Post("/buy-credits", func(c *fiber.Ctx) error {
-    currentUser := getCurrentUser(c)
-    if currentUser == nil {
-        return c.Status(401).SendString("Please login")
-    }
+	// ====================== BUY CREDITS (Placeholder) ======================
+	app.Post("/buy-credits", func(c *fiber.Ctx) error {
+		currentUser := getCurrentUser(c)
+		if currentUser == nil {
+			return c.Status(401).SendString("Please login")
+		}
 
-    return c.SendString(`<div class="p-4 text-amber-600 text-center">🚧 Payment integration coming soon! This is a demo placeholder.</div>`)
-})
+		return c.SendString(`<div class="p-4 text-amber-600 text-center">🚧 Payment integration coming soon! This is a demo placeholder.</div>`)
+	})
+
 	// ====================== LIKE POST ======================
 	app.Post("/like/:id", func(c *fiber.Ctx) error {
 		id := c.Params("id")
@@ -918,7 +1112,7 @@ app.Post("/buy-credits", func(c *fiber.Ctx) error {
 
 		// Get all users
 		rows, err := db.Query(`
-			SELECT id, username, handle, email, is_admin, credits, is_premium, membership_tier 
+			SELECT id, username, handle, email, COALESCE(phone, ''), is_admin, credits, is_premium, COALESCE(is_active, 1) 
 			FROM users ORDER BY id DESC
 		`)
 		if err != nil {
@@ -929,7 +1123,7 @@ app.Post("/buy-credits", func(c *fiber.Ctx) error {
 		var users []User
 		for rows.Next() {
 			var u User
-			err := rows.Scan(&u.ID, &u.Username, &u.Handle, &u.Email, &u.IsAdmin, &u.Credits, &u.IsPremium, &u.MembershipTier)
+			err := rows.Scan(&u.ID, &u.Username, &u.Handle, &u.Email, &u.Phone, &u.IsAdmin, &u.Credits, &u.IsPremium, &u.IsActive)
 			if err != nil {
 				continue
 			}
@@ -1016,11 +1210,20 @@ app.Post("/buy-credits", func(c *fiber.Ctx) error {
 		var id int
 		var username, handle string
 		var isAdmin bool
+		var isActive bool
 		var hash string
 
-		err := db.QueryRow("SELECT id, username, handle, is_admin, password_hash FROM users WHERE email = ?", email).
-			Scan(&id, &username, &handle, &isAdmin, &hash)
-		if err != nil || bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) != nil {
+		err := db.QueryRow("SELECT id, username, handle, is_admin, is_active, password_hash FROM users WHERE email = ?", email).
+			Scan(&id, &username, &handle, &isAdmin, &isActive, &hash)
+		if err != nil {
+			return c.SendString(`<div class="p-4 text-red-500 text-center">Invalid email or password</div>`)
+		}
+		
+		if !isActive {
+			return c.SendString(`<div class="p-4 text-red-500 text-center">Account is deactivated. Please contact admin.</div>`)
+		}
+		
+		if bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) != nil {
 			return c.SendString(`<div class="p-4 text-red-500 text-center">Invalid email or password</div>`)
 		}
 
@@ -1036,6 +1239,7 @@ app.Post("/buy-credits", func(c *fiber.Ctx) error {
 		username := c.FormValue("username")
 		handle := c.FormValue("handle")
 		email := c.FormValue("email")
+		phone := c.FormValue("phone")
 		password := c.FormValue("password")
 
 		if len(password) < 6 {
@@ -1043,8 +1247,8 @@ app.Post("/buy-credits", func(c *fiber.Ctx) error {
 		}
 
 		hash, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-		_, err := db.Exec(`INSERT INTO users (username, handle, email, password_hash, credits) VALUES (?, ?, ?, ?, ?)`,
-			username, handle, email, hash, 500)
+		_, err := db.Exec(`INSERT INTO users (username, handle, email, phone, password_hash, credits) VALUES (?, ?, ?, ?, ?, ?)`,
+			username, handle, email, phone, hash, 500)
 		if err != nil {
 			return c.SendString(`<div class="p-4 text-red-500 text-center">Handle or email already taken</div>`)
 		}
@@ -1057,12 +1261,12 @@ app.Post("/buy-credits", func(c *fiber.Ctx) error {
 		return c.SendString(`<div class="p-4 text-center">Logged out successfully<script>window.location.reload()</script></div>`)
 	})
 
-// Get port from environment (Render sets this)
-port := os.Getenv("PORT")
-if port == "" {
-    port = "3000"
-}
+	// Get port from environment (Render sets this)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "3000"
+	}
 
-log.Printf("🚀 Server running on http://localhost:%s", port)
-log.Fatal(app.Listen(":" + port))
+	log.Printf("🚀 Server running on http://localhost:%s", port)
+	log.Fatal(app.Listen(":" + port))
 }
