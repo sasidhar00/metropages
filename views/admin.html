@@ -7,164 +7,87 @@
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .metro-brand { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            font-weight: 900; 
-            letter-spacing: -2.5px; 
-            text-transform: lowercase;
-        }
-        .mobile-menu-open {
-            overflow: hidden;
-        }
+        .metro-brand { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-weight: 900; letter-spacing: -2.5px; text-transform: lowercase; }
         @media (max-width: 768px) {
-            table, thead, tbody, th, td, tr { 
-                display: block; 
-            }
-            thead tr { 
-                position: absolute;
-                top: -9999px;
-                left: -9999px;
-            }
-            tr { 
-                border: 1px solid #e2e8f0;
-                margin-bottom: 1rem;
-                border-radius: 0.75rem;
-                padding: 0.5rem;
-            }
-            td { 
-                border: none;
-                position: relative;
-                padding-left: 50% !important;
-                text-align: left !important;
-            }
-            td:before { 
-                position: absolute;
-                top: 0.75rem;
-                left: 1rem;
-                width: 45%;
-                padding-right: 10px;
-                white-space: nowrap;
-                font-weight: 600;
-                color: #0f172a;
-            }
+            table, thead, tbody, th, td, tr { display: block; }
+            thead tr { position: absolute; top: -9999px; left: -9999px; }
+            tr { border: 1px solid #e2e8f0; margin-bottom: 1rem; border-radius: 0.75rem; padding: 0.5rem; }
+            td { border: none; position: relative; padding-left: 50% !important; text-align: left !important; }
+            td:before { position: absolute; top: 0.75rem; left: 1rem; width: 45%; padding-right: 10px; white-space: nowrap; font-weight: 600; color: #0f172a; }
             td:nth-of-type(1):before { content: "User"; }
-            td:nth-of-type(2):before { content: "Handle"; }
-            td:nth-of-type(3):before { content: "Email"; }
-            td:nth-of-type(4):before { content: "Credits"; }
-            td:nth-of-type(5):before { content: "Status"; }
-            td:nth-of-type(6):before { content: "Actions"; }
+            td:nth-of-type(2):before { content: "Contact"; }
+            td:nth-of-type(3):before { content: "Credits"; }
+            td:nth-of-type(4):before { content: "Status"; }
+            td:nth-of-type(5):before { content: "Actions"; }
         }
     </style>
 </head>
 <body class="bg-slate-50">
-    <!-- Mobile Menu Overlay -->
-    <div id="mobileOverlay" class="fixed inset-0 bg-black/50 z-40 hidden" onclick="closeMobileMenu()"></div>
-    
-    <!-- Mobile Sidebar -->
-    <div id="mobileSidebar" class="fixed top-0 left-0 w-64 h-full bg-white z-50 transform -translate-x-full transition-transform duration-300 ease-in-out shadow-xl">
-        <div class="p-4 border-b border-slate-100">
-            <div class="flex justify-between items-center">
-                <h1 class="metro-brand text-2xl text-[#1d9bf0]">metropages</h1>
-                <p class="text-[10px] text-slate-400 mt-0.5">by kanams.ai 🇮🇳</p>
-                <button onclick="closeMobileMenu()" class="text-slate-500 text-2xl">&times;</button>
-            </div>
-        </div>
-        <div class="p-4">
-            <a href="/" class="block py-3 px-2 hover:bg-slate-100 rounded-lg transition">🏠 Home</a>
-            <a href="/news" class="block py-3 px-2 hover:bg-slate-100 rounded-lg transition">📰 News Feed</a>
-            <a href="/profile" class="block py-3 px-2 hover:bg-slate-100 rounded-lg transition">👤 Profile</a>
-            <a href="/admin" class="block py-3 px-2 bg-slate-100 text-amber-600 rounded-lg transition">👑 Admin Dashboard</a>
-        </div>
-    </div>
-
     <div class="max-w-7xl mx-auto p-4 sm:p-6">
-        <!-- Header -->
         <div class="flex justify-between items-center mb-6 flex-wrap gap-3">
-            <div class="flex items-center gap-3">
-                <button onclick="toggleMobileMenu()" class="lg:hidden text-slate-600 text-2xl">☰</button>
-                <div>
-                    <h1 class="text-xl sm:text-2xl font-bold text-slate-900">Admin Dashboard</h1>
-                    <p class="text-slate-500 text-sm">Welcome, {{.CurrentUser.Username}}</p>
-                </div>
+            <div>
+                <h1 class="text-xl sm:text-2xl font-bold text-slate-900">Admin Dashboard</h1>
+                <p class="text-slate-500 text-sm">Welcome, {{.CurrentUser.Username}}</p>
             </div>
             <a href="/" class="bg-[#1d9bf0] text-white px-4 py-1.5 rounded-full hover:bg-[#1a8cd8] transition text-sm">← Back</a>
         </div>
 
-        <!-- Stats Cards - Responsive Grid -->
+        <!-- Stats Cards -->
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-            <div class="bg-white rounded-xl p-4 shadow-sm">
-                <div class="text-2xl font-bold text-blue-600">{{.TotalPosts}}</div>
-                <div class="text-slate-500 text-sm">Total Posts</div>
-            </div>
-            <div class="bg-white rounded-xl p-4 shadow-sm">
-                <div class="text-2xl font-bold text-green-600">{{.TotalUsers}}</div>
-                <div class="text-slate-500 text-sm">Total Users</div>
-            </div>
-            <div class="bg-white rounded-xl p-4 shadow-sm">
-                <div class="text-2xl font-bold text-amber-600">{{.TotalCreditsSpent}}</div>
-                <div class="text-slate-500 text-sm">Credits Spent</div>
-            </div>
+            <div class="bg-white rounded-xl p-4 shadow-sm"><div class="text-2xl font-bold text-blue-600">{{.TotalPosts}}</div><div class="text-slate-500 text-sm">Total Posts</div></div>
+            <div class="bg-white rounded-xl p-4 shadow-sm"><div class="text-2xl font-bold text-green-600">{{.TotalUsers}}</div><div class="text-slate-500 text-sm">Total Users</div></div>
+            <div class="bg-white rounded-xl p-4 shadow-sm"><div class="text-2xl font-bold text-amber-600">{{.TotalCreditsSpent}}</div><div class="text-slate-500 text-sm">Credits Spent</div></div>
         </div>
 
-        <!-- Tabs - Mobile Friendly -->
+        <!-- Tabs -->
         <div class="flex flex-wrap gap-2 mb-6 border-b border-slate-200">
             <button onclick="showTab('pending')" id="tab-pending" class="px-4 py-2 text-sm font-semibold border-b-2 border-[#1d9bf0] text-[#1d9bf0]">Pending Posts</button>
+            <button onclick="showTab('users')" id="tab-users" class="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700">User Management</button>
             <button onclick="showTab('news')" id="tab-news" class="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700">Manage News</button>
             <button onclick="showTab('trends')" id="tab-trends" class="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700">Market Trends</button>
-            <button onclick="showTab('users')" id="tab-users" class="px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700">Users</button>
         </div>
 
         <!-- Pending Posts Tab -->
         <div id="pending-posts" class="bg-white rounded-xl shadow-sm mb-6">
-            <div class="border-b p-4">
-                <h2 class="text-lg font-bold">Pending Posts for Approval</h2>
-                <p class="text-slate-500 text-sm">Review and approve posts from users</p>
-            </div>
+            <div class="border-b p-4"><h2 class="text-lg font-bold">Pending Posts</h2><p class="text-slate-500 text-sm">Review and approve posts</p></div>
             <div class="divide-y">
                 {{range .PendingPosts}}
                 <div class="p-4">
                     <div class="flex flex-col sm:flex-row justify-between items-start gap-3">
                         <div class="flex-1">
-                            <div class="flex flex-wrap items-center gap-2 mb-2">
-                                <span class="font-semibold">{{.User}}</span>
-                                <span class="text-slate-500 text-sm">@{{.Handle}}</span>
-                                <span class="text-xs text-slate-400">{{.CreatedAt.Format "Jan 02, 2006"}}</span>
-                            </div>
+                            <div class="flex flex-wrap items-center gap-2 mb-2"><span class="font-semibold">{{.User}}</span><span class="text-slate-500 text-sm">@{{.Handle}}</span><span class="text-xs text-slate-400">{{.CreatedAt.Format "Jan 02, 2006"}}</span></div>
                             <p class="text-slate-700 text-sm mb-2">{{.Content}}</p>
-                            <div class="flex flex-wrap gap-1.5 mb-2">
-                                <span class="inline-flex items-center px-2 py-0.5 text-xs font-bold rounded-full bg-blue-100 text-blue-700">{{.Category}}</span>
-                                {{tagHTML .Tags}}
-                            </div>
-                            <div class="text-sm text-slate-500">💰 {{.Price}}</div>
+                            <div class="flex flex-wrap gap-1.5"><span class="inline-flex items-center px-2 py-0.5 text-xs font-bold rounded-full bg-blue-100 text-blue-700">{{.Category}}</span></div>
+                            <div class="text-sm text-slate-500 mt-2">💰 {{.Price}}</div>
                         </div>
                         <div class="flex gap-2">
-                            <button hx-post="/admin/approve/{{.ID}}" hx-swap="outerHTML" 
-                                    class="bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 transition text-sm">
-                                ✓ Approve
-                            </button>
-                            <button hx-post="/admin/delete/{{.ID}}" hx-swap="outerHTML" 
-                                    class="bg-red-500 text-white px-3 py-1.5 rounded-lg hover:bg-red-600 transition text-sm">
-                                ✗ Delete
-                            </button>
+                            <button hx-post="/admin/approve/{{.ID}}" hx-swap="outerHTML" class="bg-emerald-500 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-600 transition text-sm">✓ Approve</button>
+                            <button hx-post="/admin/delete/{{.ID}}" hx-swap="outerHTML" class="bg-red-500 text-white px-3 py-1.5 rounded-lg hover:bg-red-600 transition text-sm">✗ Delete</button>
                         </div>
                     </div>
                 </div>
-                {{else}}
-                <div class="p-6 text-center text-slate-500 text-sm">No pending posts</div>
-                {{end}}
+                {{else}}<div class="p-6 text-center text-slate-500">No pending posts</div>{{end}}
+            </div>
+        </div>
+
+        <!-- User Management Tab -->
+        <div id="manage-users" class="bg-white rounded-xl shadow-sm hidden overflow-x-auto">
+            <div class="border-b p-4"><h2 class="text-lg font-bold">User Management</h2><p class="text-slate-500 text-sm">Manage users, credits, and account status</p></div>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-slate-50">
+                        <tr><th class="text-left p-3 text-sm">User</th><th class="text-left p-3 text-sm">Contact</th><th class="text-left p-3 text-sm">Credits</th><th class="text-left p-3 text-sm">Status</th><th class="text-left p-3 text-sm">Actions</th></tr>
+                    </thead>
+                    <tbody id="usersTable"></tbody>
+                </table>
             </div>
         </div>
 
         <!-- Manage News Tab -->
         <div id="manage-news" class="bg-white rounded-xl shadow-sm hidden">
             <div class="border-b p-4 flex justify-between items-center flex-wrap gap-3">
-                <div>
-                    <h2 class="text-lg font-bold">Manage News Articles</h2>
-                    <p class="text-slate-500 text-sm">Add, edit, or delete news articles</p>
-                </div>
-                <button onclick="openAddNewsModal()" class="bg-emerald-500 text-white px-4 py-1.5 rounded-lg hover:bg-emerald-600 transition text-sm">
-                    + Add News
-                </button>
+                <div><h2 class="text-lg font-bold">News Articles</h2><p class="text-slate-500 text-sm">Add, edit, or delete news</p></div>
+                <button onclick="openAddNewsModal()" class="bg-emerald-500 text-white px-4 py-1.5 rounded-lg hover:bg-emerald-600 transition text-sm">+ Add News</button>
             </div>
             <div class="divide-y">
                 {{range .AllNews}}
@@ -178,29 +101,20 @@
                             <p class="text-slate-600 text-sm">{{.Content}}</p>
                         </div>
                         <div class="flex gap-2">
-                            <button onclick="editNews({{.ID}}, '{{.Title}}', '{{.Content}}', '{{.Category}}')"  
-                                    class="text-blue-500 hover:text-blue-700 text-sm">Edit</button>
-                            <button onclick="deleteNews({{.ID}})" 
-                                    class="text-red-500 hover:text-red-700 text-sm">Delete</button>
+                            <button onclick='editNews({{.ID}}, {{printf "%q" .Title}}, {{printf "%q" .Content}}, {{printf "%q" .Category}})' class="text-blue-500 hover:text-blue-700 text-sm">Edit</button>
+                            <button onclick="deleteNews({{.ID}})" class="text-red-500 hover:text-red-700 text-sm">Delete</button>
                         </div>
                     </div>
                 </div>
-                {{else}}
-                <div class="p-6 text-center text-slate-500">No news articles</div>
-                {{end}}
+                {{else}}<div class="p-6 text-center text-slate-500">No news articles</div>{{end}}
             </div>
         </div>
 
         <!-- Market Trends Tab -->
         <div id="manage-trends" class="bg-white rounded-xl shadow-sm hidden">
             <div class="border-b p-4 flex justify-between items-center flex-wrap gap-3">
-                <div>
-                    <h2 class="text-lg font-bold">Market Trends</h2>
-                    <p class="text-slate-500 text-sm">Manage market trends displayed on homepage</p>
-                </div>
-                <button onclick="openAddTrendModal()" class="bg-emerald-500 text-white px-4 py-1.5 rounded-lg hover:bg-emerald-600 transition text-sm">
-                    + Add Trend
-                </button>
+                <div><h2 class="text-lg font-bold">Market Trends</h2><p class="text-slate-500 text-sm">Manage trends displayed on homepage</p></div>
+                <button onclick="openAddTrendModal()" class="bg-emerald-500 text-white px-4 py-1.5 rounded-lg hover:bg-emerald-600 transition text-sm">+ Add Trend</button>
             </div>
             <div class="divide-y">
                 {{range .MarketTrends}}
@@ -214,66 +128,12 @@
                             <p class="text-slate-600 text-sm">{{.Description}}</p>
                         </div>
                         <div class="flex gap-2">
-                            <button onclick="editTrend({{.ID}}, '{{.Title}}', '{{.Description}}', '{{.Trend}}', '{{.Percentage}}', '{{.Category}}')" 
-                                    class="text-blue-500 hover:text-blue-700 text-sm">Edit</button>
-                            <button onclick="deleteTrend({{.ID}})" 
-                                    class="text-red-500 hover:text-red-700 text-sm">Delete</button>
+                            <button onclick='editTrend({{.ID}}, {{printf "%q" .Title}}, {{printf "%q" .Description}}, {{printf "%q" .Trend}}, {{printf "%q" .Percentage}}, {{printf "%q" .Category}})' class="text-blue-500 hover:text-blue-700 text-sm">Edit</button>
+                            <button onclick="deleteTrend({{.ID}})" class="text-red-500 hover:text-red-700 text-sm">Delete</button>
                         </div>
                     </div>
                 </div>
-                {{else}}
-                <div class="p-6 text-center text-slate-500">No market trends</div>
-                {{end}}
-            </div>
-        </div>
-
-        <!-- Users Management Tab -->
-        <div id="manage-users" class="bg-white rounded-xl shadow-sm hidden overflow-x-auto">
-            <div class="border-b p-4">
-                <h2 class="text-lg font-bold">User Management</h2>
-                <p class="text-slate-500 text-sm">Manage users and give credits</p>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead class="bg-slate-50">
-                        <tr>
-                            <th class="text-left p-3 text-sm">User</th>
-                            <th class="text-left p-3 text-sm">Handle</th>
-                            <th class="text-left p-3 text-sm hidden sm:table-cell">Email</th>
-                            <th class="text-left p-3 text-sm">Credits</th>
-                            <th class="text-left p-3 text-sm">Status</th>
-                            <th class="text-left p-3 text-sm">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y">
-                        {{range .Users}}
-                        <tr>
-                            <td class="p-3 text-sm font-medium">{{.Username}}</td>
-                            <td class="p-3 text-sm text-slate-500">@{{.Handle}}</td>
-                            <td class="p-3 text-sm text-slate-500 hidden sm:table-cell">{{.Email}}</td>
-                            <td class="p-3 text-sm font-bold text-amber-600">{{.Credits}}</td>
-                            <td class="p-3 text-sm">
-                                {{if .IsAdmin}}
-                                <span class="text-purple-600 font-bold text-xs">Admin</span>
-                                {{else if .IsPremium}}
-                                <span class="text-amber-600 font-bold text-xs">Premium</span>
-                                {{else}}
-                                <span class="text-slate-500 text-xs">Free</span>
-                                {{end}}
-                            </td>
-                            <td class="p-3">
-                                {{if not .IsAdmin}}
-                                <form hx-post="/admin/give-credits" hx-target="this" hx-swap="outerHTML" class="flex gap-1">
-                                    <input type="hidden" name="user_id" value="{{.ID}}">
-                                    <input type="number" name="credits" placeholder="Amt" class="border rounded-lg px-2 py-1 text-sm w-16">
-                                    <button type="submit" class="bg-blue-500 text-white px-2 py-1 rounded-lg text-xs hover:bg-blue-600">Give</button>
-                                </form>
-                                {{end}}
-                            </td>
-                        </tr>
-                        {{end}}
-                    </tbody>
-                </table>
+                {{else}}<div class="p-6 text-center text-slate-500">No market trends</div>{{end}}
             </div>
         </div>
     </div>
@@ -294,7 +154,7 @@
                             <option value="real-estate">Real Estate</option>
                             <option value="gig">Gig Economy</option>
                         </select>
-                        <div class="flex gap-2 pt-2">
+                        <div class="flex gap-2">
                             <button type="button" onclick="closeNewsModal()" class="flex-1 px-3 py-2 border rounded-lg text-sm">Cancel</button>
                             <button type="submit" class="flex-1 bg-[#1d9bf0] text-white px-3 py-2 rounded-lg text-sm">Save</button>
                         </div>
@@ -326,7 +186,7 @@
                             <option value="real-estate">Real Estate</option>
                             <option value="gig">Gig Economy</option>
                         </select>
-                        <div class="flex gap-2 pt-2">
+                        <div class="flex gap-2">
                             <button type="button" onclick="closeTrendModal()" class="flex-1 px-3 py-2 border rounded-lg text-sm">Cancel</button>
                             <button type="submit" class="flex-1 bg-[#1d9bf0] text-white px-3 py-2 rounded-lg text-sm">Save</button>
                         </div>
@@ -337,48 +197,77 @@
     </div>
 
     <script>
-        let currentEditNewsId = null;
-        let currentEditTrendId = null;
-
-        function toggleMobileMenu() {
-            const sidebar = document.getElementById('mobileSidebar');
-            const overlay = document.getElementById('mobileOverlay');
-            sidebar.classList.toggle('-translate-x-full');
-            overlay.classList.toggle('hidden');
-        }
-
-        function closeMobileMenu() {
-            const sidebar = document.getElementById('mobileSidebar');
-            const overlay = document.getElementById('mobileOverlay');
-            sidebar.classList.add('-translate-x-full');
-            overlay.classList.add('hidden');
-        }
-
         function showTab(tab) {
             document.getElementById('pending-posts').classList.add('hidden');
+            document.getElementById('manage-users').classList.add('hidden');
             document.getElementById('manage-news').classList.add('hidden');
             document.getElementById('manage-trends').classList.add('hidden');
-            document.getElementById('manage-users').classList.add('hidden');
             
             document.getElementById('tab-pending').className = 'px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700';
+            document.getElementById('tab-users').className = 'px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700';
             document.getElementById('tab-news').className = 'px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700';
             document.getElementById('tab-trends').className = 'px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700';
-            document.getElementById('tab-users').className = 'px-4 py-2 text-sm font-semibold text-slate-500 hover:text-slate-700';
             
             if (tab === 'pending') {
                 document.getElementById('pending-posts').classList.remove('hidden');
                 document.getElementById('tab-pending').className = 'px-4 py-2 text-sm font-semibold border-b-2 border-[#1d9bf0] text-[#1d9bf0]';
+            } else if (tab === 'users') {
+                document.getElementById('manage-users').classList.remove('hidden');
+                document.getElementById('tab-users').className = 'px-4 py-2 text-sm font-semibold border-b-2 border-[#1d9bf0] text-[#1d9bf0]';
+                loadUsers();
             } else if (tab === 'news') {
                 document.getElementById('manage-news').classList.remove('hidden');
                 document.getElementById('tab-news').className = 'px-4 py-2 text-sm font-semibold border-b-2 border-[#1d9bf0] text-[#1d9bf0]';
             } else if (tab === 'trends') {
                 document.getElementById('manage-trends').classList.remove('hidden');
                 document.getElementById('tab-trends').className = 'px-4 py-2 text-sm font-semibold border-b-2 border-[#1d9bf0] text-[#1d9bf0]';
-            } else if (tab === 'users') {
-                document.getElementById('manage-users').classList.remove('hidden');
-                document.getElementById('tab-users').className = 'px-4 py-2 text-sm font-semibold border-b-2 border-[#1d9bf0] text-[#1d9bf0]';
             }
         }
+
+        function loadUsers() {
+            fetch('/admin/users')
+                .then(res => res.json())
+                .then(users => {
+                    const tbody = document.getElementById('usersTable');
+                    tbody.innerHTML = users.map(user => `
+                        <tr class="border-b">
+                            <td class="p-3"><div class="font-medium">${escapeHtml(user.username)}</div><div class="text-xs text-slate-400">@${escapeHtml(user.handle)}</div></td>
+                            <td class="p-3"><div class="text-sm">${escapeHtml(user.email)}</div><div class="text-xs text-slate-400">${escapeHtml(user.phone) || 'No phone'}</div></td>
+                            <td class="p-3 font-bold text-amber-600">${user.credits}</td>
+                            <td class="p-3">${user.is_admin ? '<span class="text-purple-600 text-xs font-bold">Admin</span>' : user.is_premium ? '<span class="text-amber-600 text-xs font-bold">Premium</span>' : '<span class="text-slate-400 text-xs">Free</span>'}${!user.is_active ? '<span class="text-red-500 text-xs ml-1">(Inactive)</span>' : ''}</td>
+                            <td class="p-3">
+                                <form hx-post="/admin/user/update" hx-target="closest tr" hx-swap="outerHTML" class="flex flex-wrap gap-1">
+                                    <input type="hidden" name="user_id" value="${user.id}">
+                                    <input type="number" name="credits" value="${user.credits}" class="border rounded px-1 py-0.5 text-xs w-16">
+                                    <label class="text-xs"><input type="checkbox" name="is_premium" ${user.is_premium ? 'checked' : ''}> Premium</label>
+                                    <label class="text-xs"><input type="checkbox" name="is_active" ${user.is_active ? 'checked' : ''}> Active</label>
+                                    <button type="submit" class="bg-blue-500 text-white px-2 py-0.5 rounded text-xs">Save</button>
+                                </form>
+                                ${!user.is_admin ? `<button onclick="deleteUser(${user.id})" class="text-red-500 text-xs ml-1">Delete</button>` : ''}
+                            </td>
+                        </tr>
+                    `).join('');
+                });
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>]/g, function(m) {
+                if (m === '&') return '&amp;';
+                if (m === '<') return '&lt;';
+                if (m === '>') return '&gt;';
+                return m;
+            });
+        }
+
+        function deleteUser(id) {
+            if (confirm('Delete this user?')) {
+                fetch('/admin/user/delete/' + id, { method: 'POST' }).then(() => loadUsers());
+            }
+        }
+
+        let currentEditNewsId = null;
+        let currentEditTrendId = null;
 
         function openAddNewsModal() {
             currentEditNewsId = null;
@@ -404,8 +293,7 @@
 
         function deleteNews(id) {
             if (confirm('Delete this news article?')) {
-                fetch('/admin/news/delete/' + id, { method: 'POST' })
-                    .then(() => location.reload());
+                fetch('/admin/news/delete/' + id, { method: 'POST' }).then(() => location.reload());
             }
         }
 
@@ -442,8 +330,7 @@
 
         function deleteTrend(id) {
             if (confirm('Delete this market trend?')) {
-                fetch('/admin/trends/delete/' + id, { method: 'POST' })
-                    .then(() => location.reload());
+                fetch('/admin/trends/delete/' + id, { method: 'POST' }).then(() => location.reload());
             }
         }
 
@@ -459,17 +346,15 @@
             }
         }
 
-        document.getElementById('newsForm').addEventListener('submit', function(e) {
+        document.getElementById('newsForm')?.addEventListener('submit', function(e) {
             e.preventDefault();
-            fetch(this.action, { method: 'POST', body: new FormData(this) })
-                .then(() => location.reload());
+            fetch(this.action, { method: 'POST', body: new FormData(this) }).then(() => location.reload());
         });
 
-        document.getElementById('trendForm').addEventListener('submit', function(e) {
+        document.getElementById('trendForm')?.addEventListener('submit', function(e) {
             e.preventDefault();
-            fetch(this.action, { method: 'POST', body: new FormData(this) })
-                .then(() => location.reload());
+            fetch(this.action, { method: 'POST', body: new FormData(this) }).then(() => location.reload());
         });
-    </script>  
+    </script>
 </body>
 </html>
