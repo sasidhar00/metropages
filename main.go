@@ -17,10 +17,10 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	"github.com/gofiber/template/html/v2"
 	_ "github.com/mattn/go-sqlite3"
-        _ "github.com/tursodatabase/libsql-client-go/libsql"
+	_ "github.com/tursodatabase/libsql-client-go/libsql"
 	"golang.org/x/crypto/bcrypt"
-        
-        "github.com/joho/godotenv"
+	
+	"github.com/joho/godotenv"
 )
 
 type Post struct {
@@ -95,7 +95,6 @@ func initDB() {
 	var err error
 	
 	if dbURL != "" && authToken != "" {
-		// Production: Use Turso
 		log.Println("🔗 Connecting to Turso database...")
 		db, err = sql.Open("libsql", dbURL+"?authToken="+authToken)
 		if err != nil {
@@ -103,7 +102,6 @@ func initDB() {
 		}
 		log.Println("✅ Connected to Turso successfully!")
 	} else {
-		// Local development: Use SQLite
 		log.Println("📁 Using SQLite for local development")
 		db, err = sql.Open("sqlite3", "./metropages.db")
 		if err != nil {
@@ -111,89 +109,91 @@ func initDB() {
 		}
 	}
 
-	// Test connection
 	if err := db.Ping(); err != nil {
 		log.Fatal("Database ping failed:", err)
 	}
 
-	// Create tables
+	// Clean SQL without comments
 	createTablesSQL := `
-		CREATE TABLE IF NOT EXISTS posts (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			user_id INTEGER DEFAULT 0,
-			username TEXT,
-			handle TEXT,
-			content TEXT,
-			price TEXT,
-			category TEXT,
-			tags TEXT,
-			image_url TEXT,
-			likes INTEGER DEFAULT 0,
-			status TEXT DEFAULT 'pending',
-			boost_until DATETIME,
-			featured_until DATETIME,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		);
+CREATE TABLE IF NOT EXISTS posts (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER DEFAULT 0,
+    username TEXT,
+    handle TEXT,
+    content TEXT,
+    price TEXT,
+    category TEXT,
+    tags TEXT,
+    image_url TEXT,
+    likes INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'pending',
+    boost_until DATETIME,
+    featured_until DATETIME,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
-		// Update the users table creation SQL
-                   CREATE TABLE IF NOT EXISTS users (
+CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE,
     handle TEXT UNIQUE,
     email TEXT UNIQUE,
-    phone TEXT DEFAULT '',           // ← ADD THIS
+    phone TEXT DEFAULT '',
     password_hash TEXT,
     is_admin BOOLEAN DEFAULT FALSE,
     credits INTEGER DEFAULT 500,
     is_premium BOOLEAN DEFAULT FALSE,
-    is_active BOOLEAN DEFAULT TRUE,  // ← ADD THIS
+    is_active BOOLEAN DEFAULT TRUE,
     premium_until DATETIME,
     membership_tier TEXT DEFAULT 'free'
 );
 
-		CREATE TABLE IF NOT EXISTS news (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			title TEXT,
-			content TEXT,
-			category TEXT,
-			likes INTEGER DEFAULT 0,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		);
+CREATE TABLE IF NOT EXISTS news (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT,
+    content TEXT,
+    category TEXT,
+    likes INTEGER DEFAULT 0,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
-		CREATE TABLE IF NOT EXISTS market_trends (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			title TEXT,
-			description TEXT,
-			trend TEXT,
-			percentage TEXT,
-			category TEXT,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		);
+CREATE TABLE IF NOT EXISTS market_trends (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT,
+    description TEXT,
+    trend TEXT,
+    percentage TEXT,
+    category TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
-		CREATE TABLE IF NOT EXISTS transactions (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			user_id INTEGER,
-			amount INTEGER,
-			type TEXT,
-			description TEXT,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		);
+CREATE TABLE IF NOT EXISTS transactions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER,
+    amount INTEGER,
+    type TEXT,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
 
-		CREATE TABLE IF NOT EXISTS password_resets (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			email TEXT,
-			token TEXT,
-			expires_at DATETIME,
-			used BOOLEAN DEFAULT FALSE,
-			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-		);
-	`
+CREATE TABLE IF NOT EXISTS password_resets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT,
+    token TEXT,
+    expires_at DATETIME,
+    used BOOLEAN DEFAULT FALSE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+`
 
 	_, err = db.Exec(createTablesSQL)
 	if err != nil {
 		log.Fatal("Error creating tables:", err)
 	}
 	log.Println("✅ Tables created/verified")
+
+	// Auto-migrate: Add any missing columns (safe to run)
+	db.Exec(`ALTER TABLE users ADD COLUMN phone TEXT DEFAULT ''`)
+	db.Exec(`ALTER TABLE users ADD COLUMN is_active BOOLEAN DEFAULT TRUE`)
 
 	// Seed default admin
 	var adminCount int
@@ -217,16 +217,16 @@ func initDB() {
 		newsData := []struct {
 			title, content, category string
 		}{
-			{"🏠 Real Estate Boom", "Property prices up 15% in Tellapur region this quarter. Experts predict continued growth.", "real-estate"},
-			{"💼 Gig Economy Update", "Remote work opportunities increased by 40% in 2025. New platforms emerging.", "gig"},
-			{"📊 Market Trend", "HMDA approvals for new projects hit all-time high. 50+ projects approved.", "real-estate"},
-			{"⚡ Quick Hire", "Top companies now hiring through metropages platform. 1000+ jobs available.", "gig"},
-			{"🏗️ New Launch", "Luxury villas launching next week in Zaheerabad. Pre-booking opens tomorrow.", "real-estate"},
+			{"🏠 Real Estate Boom", "Property prices up 15% in Tellapur region this quarter.", "real-estate"},
+			{"💼 Gig Economy Update", "Remote work opportunities increased by 40% in 2025.", "gig"},
+			{"📊 Market Trend", "HMDA approvals for new projects hit all-time high.", "real-estate"},
+			{"⚡ Quick Hire", "Top companies now hiring through metropages platform.", "gig"},
+			{"🏗️ New Launch", "Luxury villas launching next week in Zaheerabad.", "real-estate"},
 		}
 		for _, news := range newsData {
 			db.Exec("INSERT INTO news (title, content, category) VALUES (?, ?, ?)", news.title, news.content, news.category)
 		}
-		log.Println("✅ Seeded", len(newsData), "news articles")
+		log.Println("✅ Seeded news articles")
 	}
 
 	// Seed market trends if empty
@@ -236,17 +236,17 @@ func initDB() {
 		trendsData := []struct {
 			title, description, trend, percentage, category string
 		}{
-			{"Zaheerabad Farms", "Premium plotted development with DTCP approval", "up", "+23%", "real-estate"},
-			{"Remote Work", "Work from home opportunities across IT sector", "up", "+45%", "gig"},
-			{"Full-time Development", "Software developers in high demand", "up", "+32%", "gig"},
-			{"Commercial Space", "Office space demand in Hitech City", "up", "+18%", "real-estate"},
-			{"Freelance Economy", "Gig workers shifting to freelance model", "stable", "0%", "gig"},
+			{"Zaheerabad Farms", "Premium plotted development", "up", "+23%", "real-estate"},
+			{"Remote Work", "Work from home opportunities", "up", "+45%", "gig"},
+			{"Full-time Development", "Software developers in demand", "up", "+32%", "gig"},
+			{"Commercial Space", "Office space demand rising", "up", "+18%", "real-estate"},
+			{"Freelance Economy", "Gig workers shifting to freelance", "stable", "0%", "gig"},
 		}
 		for _, trend := range trendsData {
 			db.Exec("INSERT INTO market_trends (title, description, trend, percentage, category) VALUES (?, ?, ?, ?, ?)",
 				trend.title, trend.description, trend.trend, trend.percentage, trend.category)
 		}
-		log.Println("✅ Seeded", len(trendsData), "market trends")
+		log.Println("✅ Seeded market trends")
 	}
 }
 
@@ -433,10 +433,10 @@ func main() {
 			boosted, featured bool
 			userID int
 		}{
-			{"Green Villas", "greenvillas", "3 BHK Premium Villa in Tellapur with HMDA approval. Ready to occupy.", "₹1.85 Cr", "Real Estate", "HMDA,Ready to Occupy", "https://picsum.photos/id/1015/800/450", false, true, 1},
-			{"Swift Logistics", "swiftlogistics", "Need 2 experienced drivers for NIMZ project. Full-time position with good salary.", "₹35,000/month", "Gig", "Full-time,Urgent Hiring,Experienced", "https://picsum.photos/id/201/800/450", true, false, 1},
-			{"Luxury Plots", "plotking", "DTCP approved 200 sqyd plots in Zaheerabad Farms. Premium location.", "₹45,000/sqyd", "Real Estate", "DTCP,Premium,Clear Title", "https://picsum.photos/id/133/800/450", false, false, 1},
-			{"Modern Interiors", "interiorshub", "Complete modular kitchen and wardrobe installation. Work from home consultation.", "Contact Owner", "Gig", "Work from Home,Flexible Hours", "https://picsum.photos/id/180/800/450", false, false, 1},
+			{"Green Villas", "greenvillas", "3 BHK Premium Villa in Tellapur with HMDA approval.", "₹1.85 Cr", "Real Estate", "HMDA,Ready to Occupy", "https://picsum.photos/id/1015/800/450", false, true, 1},
+			{"Swift Logistics", "swiftlogistics", "Need 2 experienced drivers. Full-time position.", "₹35,000/month", "Gig", "Full-time,Urgent Hiring", "https://picsum.photos/id/201/800/450", true, false, 1},
+			{"Luxury Plots", "plotking", "DTCP approved plots in Zaheerabad Farms.", "₹45,000/sqyd", "Real Estate", "DTCP,Premium", "https://picsum.photos/id/133/800/450", false, false, 1},
+			{"Modern Interiors", "interiorshub", "Modular kitchen installation. Work from home consultation.", "Contact Owner", "Gig", "Work from Home", "https://picsum.photos/id/180/800/450", false, false, 1},
 		}
 
 		for _, d := range dummyData {
@@ -713,7 +713,7 @@ func main() {
 
 		msg := "✅ Post created successfully!"
 		if status == "pending" {
-			msg = "📝 Post submitted for admin approval. You'll be notified once approved."
+			msg = "📝 Post submitted for admin approval."
 		}
 		
 		return c.SendString(`<div class="p-4 text-emerald-600">` + msg + `</div><script>window.location.reload()</script>`)
@@ -729,21 +729,16 @@ func main() {
 	app.Post("/forgot-password", func(c *fiber.Ctx) error {
 		email := c.FormValue("email")
 		
-		// Check if user exists
 		var userID int
 		err := db.QueryRow("SELECT id FROM users WHERE email = ? AND is_active = 1", email).Scan(&userID)
 		if err != nil {
-			// Don't reveal if email exists or not (security)
 			return c.SendString(`<div class="p-4 text-emerald-600 text-center">If your email exists, you will receive a reset link.</div>`)
 		}
-		
-		// Generate reset token
 		
 		token := fmt.Sprintf("%d_%s", time.Now().UnixNano(), email)
 		hash := sha256.Sum256([]byte(token))
 		hashToken := hex.EncodeToString(hash[:])
 		
-		// Store token (expires in 1 hour)
 		expiresAt := time.Now().Add(1 * time.Hour)
 		_, err = db.Exec(`INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)`, 
 			email, hashToken, expiresAt)
@@ -753,15 +748,13 @@ func main() {
 			return c.Status(500).SendString("Internal error")
 		}
 		
-		// In production, send email here
-		// For demo, show the reset link directly
 		resetLink := fmt.Sprintf("/reset-password?token=%s", token)
 		
 		return c.SendString(fmt.Sprintf(`
 			<div class="p-4 text-emerald-600 text-center">
 				✅ Reset link generated!<br>
 				<a href="%s" class="text-[#1d9bf0] underline">Click here to reset your password</a>
-				<p class="text-xs text-slate-400 mt-2">(In production, this would be emailed to you)</p>
+				<p class="text-xs text-slate-400 mt-2">(Demo - In production, this would be emailed)</p>
 			</div>
 		`, resetLink))
 	})
@@ -773,18 +766,16 @@ func main() {
 			return c.Redirect("/")
 		}
 		
-		// Hash the token to match stored value
 		hash := sha256.Sum256([]byte(token))
 		hashToken := hex.EncodeToString(hash[:])
 		
-		// Verify token
 		var email string
 		var expiresAt time.Time
 		err := db.QueryRow(`SELECT email, expires_at FROM password_resets WHERE token = ? AND used = FALSE AND expires_at > datetime('now')`,
 			hashToken).Scan(&email, &expiresAt)
 		
 		if err != nil {
-			return c.SendString(`<div class="p-4 text-red-500 text-center">Invalid or expired reset link. Please try again.</div>`)
+			return c.SendString(`<div class="p-4 text-red-500 text-center">Invalid or expired reset link.</div>`)
 		}
 		
 		return c.Render("reset-password", fiber.Map{
@@ -801,11 +792,9 @@ func main() {
 			return c.SendString(`<div class="p-4 text-red-500 text-center">Password must be at least 6 characters</div>`)
 		}
 		
-		// Hash the token
 		hash := sha256.Sum256([]byte(token))
 		hashToken := hex.EncodeToString(hash[:])
 		
-		// Get email from token
 		var email string
 		err := db.QueryRow(`SELECT email FROM password_resets WHERE token = ? AND used = FALSE AND expires_at > datetime('now')`,
 			hashToken).Scan(&email)
@@ -814,14 +803,12 @@ func main() {
 			return c.SendString(`<div class="p-4 text-red-500 text-center">Invalid or expired reset link</div>`)
 		}
 		
-		// Update password
 		hashPassword, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		_, err = db.Exec("UPDATE users SET password_hash = ? WHERE email = ?", hashPassword, email)
 		if err != nil {
 			return c.Status(500).SendString("Error updating password")
 		}
 		
-		// Mark token as used
 		db.Exec("UPDATE password_resets SET used = TRUE WHERE token = ?", hashToken)
 		
 		return c.SendString(`<div class="p-4 text-emerald-600 text-center">Password reset successfully! <a href="/" class="text-[#1d9bf0]">Login now</a></div>`)
@@ -887,6 +874,8 @@ func main() {
 		id := c.Params("id")
 		db.Exec("DELETE FROM users WHERE id = ?", id)
 		db.Exec("DELETE FROM posts WHERE user_id = ?", id)
+		db.Exec("DELETE FROM comments WHERE user_id = ?", id)
+		db.Exec("DELETE FROM applications WHERE applicant_id = ?", id)
 		
 		return c.SendString("✅ User deleted")
 	})
@@ -912,7 +901,7 @@ func main() {
 		if currentUser.Credits < cost {
 			return c.JSON(fiber.Map{
 				"success": false,
-				"message": fmt.Sprintf("Not enough credits! Need %d credits. Purchase credits from the store.", cost),
+				"message": fmt.Sprintf("Not enough credits! Need %d credits.", cost),
 			})
 		}
 
@@ -954,12 +943,6 @@ func main() {
 			log.Println("Error logging transaction:", err)
 		}
 
-		_, err = tx.Exec("INSERT INTO transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)",
-			currentUser.ID, 100, "credit", "Welcome bonus for upgrading to premium")
-		if err != nil {
-			log.Println("Error logging bonus:", err)
-		}
-
 		err = tx.Commit()
 		if err != nil {
 			return c.Status(500).JSON(fiber.Map{
@@ -970,7 +953,7 @@ func main() {
 
 		return c.JSON(fiber.Map{
 			"success": true,
-			"message": "✅ Successfully upgraded to Premium! You received 100 bonus credits. Premium benefits active for 30 days.",
+			"message": "✅ Successfully upgraded to Premium! You received 100 bonus credits.",
 		})
 	})
 
@@ -983,7 +966,7 @@ func main() {
 
 		cost := 99
 		if currentUser.Credits < cost {
-			return c.SendString(fmt.Sprintf("Not enough credits! Need %d credits. Purchase credits from the store.", cost))
+			return c.SendString(fmt.Sprintf("Not enough credits! Need %d credits.", cost))
 		}
 
 		id := c.Params("id")
@@ -1004,12 +987,6 @@ func main() {
 			return c.Status(500).SendString("Boost failed")
 		}
 
-		_, err = tx.Exec("INSERT INTO transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)",
-			currentUser.ID, cost, "debit", "Post boost (7 days)")
-		if err != nil {
-			log.Println("Error logging transaction:", err)
-		}
-
 		err = tx.Commit()
 		if err != nil {
 			return c.Status(500).SendString("Error committing transaction")
@@ -1027,7 +1004,7 @@ func main() {
 
 		cost := 199
 		if currentUser.Credits < cost {
-			return c.SendString(fmt.Sprintf("Not enough credits! Need %d credits. Purchase credits from the store.", cost))
+			return c.SendString(fmt.Sprintf("Not enough credits! Need %d credits.", cost))
 		}
 
 		id := c.Params("id")
@@ -1048,18 +1025,12 @@ func main() {
 			return c.Status(500).SendString("Feature failed")
 		}
 
-		_, err = tx.Exec("INSERT INTO transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)",
-			currentUser.ID, cost, "debit", "Featured listing (24 hours)")
-		if err != nil {
-			log.Println("Error logging transaction:", err)
-		}
-
 		err = tx.Commit()
 		if err != nil {
 			return c.Status(500).SendString("Error committing transaction")
 		}
 
-		return c.SendString("✅ Post featured for 24 hours! It will appear at the top.")
+		return c.SendString("✅ Post featured for 24 hours!")
 	})
 
 	// ====================== BUY CREDITS (Placeholder) ======================
@@ -1068,8 +1039,7 @@ func main() {
 		if currentUser == nil {
 			return c.Status(401).SendString("Please login")
 		}
-
-		return c.SendString(`<div class="p-4 text-amber-600 text-center">🚧 Payment integration coming soon! This is a demo placeholder.</div>`)
+		return c.SendString(`<div class="p-4 text-amber-600 text-center">🚧 Payment integration coming soon!</div>`)
 	})
 
 	// ====================== LIKE POST ======================
@@ -1094,7 +1064,6 @@ func main() {
 			return c.Status(403).SendString("Access denied. Admin only.")
 		}
 
-		// Get pending posts
 		pendingPosts, _ := fetchPosts(`
 			SELECT id, username, handle, content, price, category, tags, image_url, likes, created_at,
 			       CASE WHEN boost_until > datetime('now') THEN 1 ELSE 0 END,
@@ -1105,13 +1074,9 @@ func main() {
 			ORDER BY created_at DESC
 		`)
 
-		// Get all news for management
 		allNews := getAllNews()
-		
-		// Get all market trends
 		marketTrends := getMarketTrends()
 
-		// Get all users
 		rows, err := db.Query(`
 			SELECT id, username, handle, email, COALESCE(phone, ''), is_admin, credits, is_premium, COALESCE(is_active, 1) 
 			FROM users ORDER BY id DESC
@@ -1131,7 +1096,6 @@ func main() {
 			users = append(users, u)
 		}
 
-		// Get stats
 		var totalPosts, totalUsers, totalCreditsSpent int
 		db.QueryRow("SELECT COUNT(*) FROM posts WHERE status = 'approved'").Scan(&totalPosts)
 		db.QueryRow("SELECT COUNT(*) FROM users").Scan(&totalUsers)
@@ -1155,12 +1119,8 @@ func main() {
 		if currentUser == nil || !currentUser.IsAdmin {
 			return c.Status(403).SendString("Access denied")
 		}
-
 		id := c.Params("id")
-		_, err := db.Exec("UPDATE posts SET status = 'approved' WHERE id = ?", id)
-		if err != nil {
-			return c.Status(500).SendString("Error approving post")
-		}
+		db.Exec("UPDATE posts SET status = 'approved' WHERE id = ?", id)
 		return c.SendString("✅ Post approved")
 	})
 
@@ -1170,12 +1130,8 @@ func main() {
 		if currentUser == nil || !currentUser.IsAdmin {
 			return c.Status(403).SendString("Access denied")
 		}
-
 		id := c.Params("id")
-		_, err := db.Exec("DELETE FROM posts WHERE id = ?", id)
-		if err != nil {
-			return c.Status(500).SendString("Error deleting post")
-		}
+		db.Exec("DELETE FROM posts WHERE id = ?", id)
 		return c.SendString("✅ Post deleted")
 	})
 
@@ -1185,22 +1141,14 @@ func main() {
 		if currentUser == nil || !currentUser.IsAdmin {
 			return c.Status(403).SendString("Access denied")
 		}
-
 		userID := c.FormValue("user_id")
 		credits := c.FormValue("credits")
-		
 		var creditsInt int
 		fmt.Sscanf(credits, "%d", &creditsInt)
-		
-		_, err := db.Exec("UPDATE users SET credits = credits + ? WHERE id = ?", creditsInt, userID)
-		if err != nil {
-			return c.Status(500).SendString("Error giving credits")
-		}
-		
+		db.Exec("UPDATE users SET credits = credits + ? WHERE id = ?", creditsInt, userID)
 		db.Exec("INSERT INTO transactions (user_id, amount, type, description) VALUES (?, ?, ?, ?)",
 			userID, creditsInt, "credit", "Admin grant")
-		
-		return c.SendString(fmt.Sprintf("✅ Added %d credits to user", creditsInt))
+		return c.SendString(fmt.Sprintf("✅ Added %d credits", creditsInt))
 	})
 
 	// ====================== AUTH ======================
@@ -1262,7 +1210,7 @@ func main() {
 		return c.SendString(`<div class="p-4 text-center">Logged out successfully<script>window.location.reload()</script></div>`)
 	})
 
-	// Get port from environment (Render sets this)
+	// Get port from environment
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "3000"
