@@ -135,20 +135,21 @@ func initDB() {
 			created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 		);
 
-		CREATE TABLE IF NOT EXISTS users (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			username TEXT UNIQUE,
-			handle TEXT UNIQUE,
-			email TEXT UNIQUE,
-			phone TEXT DEFAULT '',
-			password_hash TEXT,
-			is_admin BOOLEAN DEFAULT FALSE,
-			credits INTEGER DEFAULT 500,
-			is_premium BOOLEAN DEFAULT FALSE,
-			is_active BOOLEAN DEFAULT TRUE,
-			premium_until DATETIME,
-			membership_tier TEXT DEFAULT 'free'
-		);
+		// Update the users table creation SQL
+                   CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE,
+    handle TEXT UNIQUE,
+    email TEXT UNIQUE,
+    phone TEXT DEFAULT '',           // ← ADD THIS
+    password_hash TEXT,
+    is_admin BOOLEAN DEFAULT FALSE,
+    credits INTEGER DEFAULT 500,
+    is_premium BOOLEAN DEFAULT FALSE,
+    is_active BOOLEAN DEFAULT TRUE,  // ← ADD THIS
+    premium_until DATETIME,
+    membership_tier TEXT DEFAULT 'free'
+);
 
 		CREATE TABLE IF NOT EXISTS news (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
