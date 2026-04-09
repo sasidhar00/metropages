@@ -40,40 +40,27 @@
             background: linear-gradient(135deg, #f59e0b, #ef4444);
         }
         
-        /* Mobile improvements */
         .mobile-menu-open {
             overflow: hidden;
             position: fixed;
             width: 100%;
         }
         
-        /* Better touch targets for mobile */
         @media (max-width: 768px) {
-            button, 
-            a, 
-            .sidebar-item,
-            [onclick] {
+            button, a, .sidebar-item, [onclick] {
                 cursor: pointer;
                 min-height: 44px;
             }
-            
-            .post-button-group button {
-                min-height: 36px;
-            }
-            
-            /* Prevent text zoom on input focus */
             input, textarea, select {
                 font-size: 16px !important;
             }
         }
         
-        /* Ensure images don't overflow */
         img {
             max-width: 100%;
             height: auto;
         }
         
-        /* Word break for long content */
         .break-word {
             word-break: break-word;
             overflow-wrap: break-word;
@@ -81,13 +68,11 @@
     </style>
 </head>
 <body class="bg-white text-slate-900">
-    <!-- Mobile Menu Overlay -->
     <div id="mobileOverlay" class="fixed inset-0 bg-black/50 z-40 hidden" onclick="closeMobileMenu()"></div>
     
-    <!-- Main Container - Responsive -->
     <div class="flex flex-col lg:flex-row max-w-7xl mx-auto min-h-screen relative">
         
-        <!-- LEFT SIDEBAR - Mobile Responsive -->
+        <!-- LEFT SIDEBAR -->
         <header id="sidebar" class="fixed top-0 left-0 w-4/5 max-w-[280px] h-full p-4 border-r border-slate-100 flex flex-col justify-between z-50 bg-white transform -translate-x-full transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 lg:w-64 shadow-xl lg:shadow-none overflow-y-auto">
             <div>
                 <div class="p-3 mb-4 flex justify-between items-center">
@@ -113,7 +98,6 @@
                 </button>
             </div>
 
-            <!-- LEFT BOTTOM -->
             <div id="sidebar-bottom" class="mt-4">
                 {{if .CurrentUser}}
                 <div class="flex items-center gap-3 p-3 hover:bg-slate-100 rounded-xl cursor-pointer transition">
@@ -134,10 +118,8 @@
                 {{else}}
                 <div class="p-4 border-t border-slate-100">
                     <div class="flex border-b mb-4">
-                        <button onclick="switchAuthTab(0)" id="tab-login" 
-                                class="flex-1 font-bold text-sm pb-2 border-b-2 border-[#1d9bf0] text-[#1d9bf0]">Login</button>
-                        <button onclick="switchAuthTab(1)" id="tab-signup" 
-                                class="flex-1 font-bold text-sm pb-2 text-slate-400">Sign Up</button>
+                        <button onclick="switchAuthTab(0)" id="tab-login" class="flex-1 font-bold text-sm pb-2 border-b-2 border-[#1d9bf0] text-[#1d9bf0]">Login</button>
+                        <button onclick="switchAuthTab(1)" id="tab-signup" class="flex-1 font-bold text-sm pb-2 text-slate-400">Sign Up</button>
                     </div>
 
                     <div id="auth-login">
@@ -146,6 +128,9 @@
                             <input type="password" name="password" placeholder="Password" required class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:border-blue-300 outline-none">
                             <button type="submit" class="w-full bg-[#1d9bf0] text-white font-bold py-3 rounded-xl hover:bg-[#1a8cd8] transition text-sm">Login</button>
                         </form>
+                        <div class="text-center mt-3">
+                            <a href="/forgot-password" class="text-xs text-[#1d9bf0] hover:underline">Forgot password?</a>
+                        </div>
                     </div>
 
                     <div id="auth-signup" class="hidden">
@@ -153,6 +138,7 @@
                             <input type="text" name="username" placeholder="Full Name" required class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:border-blue-300 outline-none">
                             <input type="text" name="handle" placeholder="Handle (no @)" required class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:border-blue-300 outline-none">
                             <input type="email" name="email" placeholder="Email" required class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:border-blue-300 outline-none">
+                            <input type="tel" name="phone" placeholder="Mobile Number (10 digits)" required pattern="[0-9]{10}" class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:border-blue-300 outline-none">
                             <input type="password" name="password" placeholder="Password (min 6 chars)" required class="w-full px-4 py-3 text-sm border border-slate-200 rounded-xl focus:border-blue-300 outline-none">
                             <button type="submit" class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl hover:bg-emerald-700 transition text-sm">Create Account</button>
                         </form>
@@ -162,14 +148,12 @@
             </div>
         </header>
 
-        <!-- Mobile Menu Button -->
         <button onclick="toggleMobileMenu()" class="lg:hidden fixed bottom-4 left-4 z-30 bg-[#1d9bf0] text-white p-3 rounded-full shadow-lg active:scale-95 transition">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
         </button>
 
         <!-- MAIN CONTENT -->
         <main class="flex-1 w-full min-w-0 pb-20 lg:pb-0">
-            <!-- Mobile Header -->
             <div class="sticky top-0 bg-white/95 backdrop-blur-md p-3 border-b border-slate-100 font-extrabold text-base z-20 flex items-center gap-3">
                 <button onclick="toggleMobileMenu()" class="lg:hidden text-slate-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
@@ -229,7 +213,6 @@
                 <div class="group p-4 {{if .IsFeatured}}featured{{else if .IsBoosted}}boosted{{end}} hover:bg-slate-50 transition-all duration-200">
                     <div class="flex gap-3">
                         <div class="w-10 h-10 bg-gradient-to-br from-lime-400 to-emerald-400 rounded-2xl flex-shrink-0 flex items-center justify-center font-bold text-white shadow-sm">M</div>
-
                         <div class="flex-1 min-w-0">
                             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2 gap-2">
                                 <div class="flex items-center flex-wrap gap-1">
@@ -271,35 +254,27 @@
                                     </button>
 
                                     {{if $.CurrentUser}}
-                                    <button onclick="boostPost({{.ID}})" 
-                                            class="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition active:scale-95">
-                                        🚀 Boost
-                                    </button>
-                                    <button onclick="featurePost({{.ID}})" 
-                                            class="flex items-center gap-1.5 bg-purple-500 hover:bg-purple-600 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition active:scale-95">
-                                        ⭐ Feature
-                                    </button>
+                                    <button onclick="boostPost({{.ID}})" class="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition active:scale-95">🚀 Boost</button>
+                                    <button onclick="featurePost({{.ID}})" class="flex items-center gap-1.5 bg-purple-500 hover:bg-purple-600 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition active:scale-95">⭐ Feature</button>
                                     {{end}}
 
-                                    <a href="https://wa.me/919999999999?text=Interested%20in%20listing%20ID%20{{.ID}}" 
-                                       target="_blank"
-                                       class="flex items-center gap-1.5 bg-[#25D366] hover:bg-[#128C7E] text-white text-xs font-semibold px-3 py-1.5 rounded-full transition active:scale-95">
-                                        📲 WhatsApp
-                                    </a>
+                                    {{if eq .Category "Gig"}}
+                                    <button onclick="openApplyModal({{.ID}}, '{{.Content}}')" class="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition active:scale-95">📝 Apply Now</button>
+                                    {{end}}
+
+                                    <a href="https://wa.me/919999999999?text=Interested%20in%20listing%20ID%20{{.ID}}" target="_blank" class="flex items-center gap-1.5 bg-[#25D366] hover:bg-[#128C7E] text-white text-xs font-semibold px-3 py-1.5 rounded-full transition active:scale-95">📲 WhatsApp</a>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 {{else}}
-                <div class="p-8 text-center text-slate-400 text-sm">
-                    No posts yet. Be the first to post!
-                </div>
+                <div class="p-8 text-center text-slate-400 text-sm">No posts yet. Be the first to post!</div>
                 {{end}}
             </div>
         </main>
 
-        <!-- RIGHT SIDEBAR - Desktop only -->
+        <!-- RIGHT SIDEBAR -->
         <aside class="hidden lg:block w-80 p-4 sticky top-0 h-screen overflow-y-auto">
             <div class="bg-slate-100 rounded-full px-4 py-2 flex items-center gap-2 mb-4">
                 <span class="text-slate-400">🔍</span>
@@ -321,13 +296,11 @@
 
             <div class="bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl p-4 border border-amber-200">
                 <h2 class="font-extrabold text-base mb-3">💰 Monetize & Earn</h2>
-                
                 {{if .CurrentUser}}
                 <div class="bg-white rounded-xl p-3 mb-3 text-center">
                     <div class="text-xs text-slate-500">Your Credits</div>
                     <div class="text-2xl font-bold text-amber-600">₹{{.CurrentUser.Credits}}</div>
                 </div>
-
                 <div class="mb-4">
                     <div class="text-sm font-bold mb-2">📦 Buy Credits</div>
                     <div class="space-y-2">
@@ -336,7 +309,6 @@
                     </div>
                     <p class="text-xs text-slate-400 text-center mt-2">🚧 Coming Soon</p>
                 </div>
-
                 <div>
                     <div class="text-sm font-bold mb-2">👑 Premium</div>
                     {{if .CurrentUser.IsPremium}}
@@ -352,23 +324,49 @@
         </aside>
     </div>
 
-    <!-- Simple Footer -->
-    <div class="text-center py-4 border-t border-slate-100 bg-white w-full lg:mt-auto">
-        <p class="text-xs text-slate-400">
-            Made in India 🇮🇳 with ❤️ by 
-            <a href="https://kanams.ai" target="_blank" rel="noopener noreferrer" class="text-[#1d9bf0] hover:underline font-medium">
-                kanams.ai
-            </a>
-        </p>
+    <!-- Apply Modal -->
+    <div id="applyModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4" onclick="closeApplyModalOnOutside(event)">
+        <div class="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div class="sticky top-0 bg-white border-b border-slate-100 p-4 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-900">Apply for this Position</h3>
+                <button onclick="closeApplyModal()" class="text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
+            </div>
+            <form id="applyForm" class="p-4 space-y-4">
+                <input type="hidden" id="applyPostId" name="post_id">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Cover Letter / Why you're a good fit *</label>
+                    <textarea id="coverLetter" name="cover_letter" rows="5" required placeholder="Tell the employer about your experience, skills, and why you're interested..." class="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Resume/CV Link (Optional)</label>
+                    <input type="url" id="resumeUrl" name="resume_url" placeholder="Google Drive, Dropbox, or LinkedIn URL" class="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="bg-slate-50 rounded-xl p-3 text-sm text-slate-600">
+                    <p class="font-semibold mb-1">📌 What happens next?</p>
+                    <p class="text-xs">The employer will review your application and contact you via WhatsApp or email.</p>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button type="button" onclick="closeApplyModal()" class="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition">Cancel</button>
+                    <button type="submit" class="flex-1 bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition font-semibold">Submit Application</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <div class="text-center py-4 border-t border-slate-100 bg-white w-full">
+        <p class="text-xs text-slate-400">Made in India 🇮🇳 with ❤️ by <a href="https://kanams.ai" target="_blank" class="text-[#1d9bf0] hover:underline font-medium">kanams.ai</a></p>
     </div>
 
     <script>
-        // Mobile menu functions
+        let currentPostId = null;
+
         function toggleMobileMenu() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('mobileOverlay');
             if (sidebar.classList.contains('-translate-x-full')) {
                 sidebar.classList.remove('-translate-x-full');
+                sidebar.classList.add('translate-x-0');
                 overlay.classList.remove('hidden');
                 document.body.classList.add('mobile-menu-open');
             } else {
@@ -380,98 +378,81 @@
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('mobileOverlay');
             sidebar.classList.add('-translate-x-full');
+            sidebar.classList.remove('translate-x-0');
             overlay.classList.add('hidden');
             document.body.classList.remove('mobile-menu-open');
         }
 
-        // Close menu when clicking on overlay
-        document.getElementById('mobileOverlay')?.addEventListener('click', closeMobileMenu);
-
-        // Close mobile menu on window resize
         window.addEventListener('resize', function() {
-            if (window.innerWidth >= 1024) {
-                closeMobileMenu();
-            }
+            if (window.innerWidth >= 1024) closeMobileMenu();
         });
 
         function boostPost(id) {
             if (confirm("Boost this post for ₹99?")) {
-                fetch('/boost/' + id, { method: 'POST' })
-                    .then(res => res.text())
-                    .then(text => {
-                        alert(text);
-                        if(text.includes("✅")) location.reload();
-                    })
-                    .catch(() => alert("Boost failed"));
+                fetch('/boost/' + id, { method: 'POST' }).then(res => res.text()).then(text => { alert(text); if(text.includes("✅")) location.reload(); });
             }
         }
 
         function featurePost(id) {
             if (confirm("Feature this post for ₹199?")) {
-                fetch('/feature/' + id, { method: 'POST' })
-                    .then(res => res.text())
-                    .then(text => {
-                        alert(text);
-                        if(text.includes("✅")) location.reload();
-                    })
-                    .catch(() => alert("Feature failed"));
+                fetch('/feature/' + id, { method: 'POST' }).then(res => res.text()).then(text => { alert(text); if(text.includes("✅")) location.reload(); });
             }
         }
 
-        function showLoginPrompt() {
-            alert("🔑 Please login or sign up using the form in the sidebar!");
+        function openApplyModal(postId, title) {
+            currentPostId = postId;
+            document.getElementById('applyPostId').value = postId;
+            document.getElementById('coverLetter').value = '';
+            document.getElementById('resumeUrl').value = '';
+            document.getElementById('applyModal').classList.remove('hidden');
+            document.getElementById('applyModal').classList.add('flex');
         }
 
-        function addPoll() {
-            alert("📊 Poll feature coming soon!");
+        function closeApplyModal() {
+            document.getElementById('applyModal').classList.add('hidden');
+            document.getElementById('applyModal').classList.remove('flex');
         }
 
-        function insertEmoji() {
-            const textarea = document.querySelector('textarea[name="content"]');
-            if (textarea) {
-                textarea.value += " 😀 ";
-                textarea.focus();
-            }
+        function closeApplyModalOnOutside(event) {
+            if (event.target === document.getElementById('applyModal')) closeApplyModal();
         }
+
+        document.getElementById('applyForm')?.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData();
+            formData.append('cover_letter', document.getElementById('coverLetter').value);
+            formData.append('resume_url', document.getElementById('resumeUrl').value);
+            fetch('/apply/' + currentPostId, { method: 'POST', body: formData })
+                .then(res => res.json())
+                .then(data => { alert(data.message); if (data.success) closeApplyModal(); });
+        });
+
+        function showLoginPrompt() { alert("🔑 Please login or sign up!"); }
+        function addPoll() { alert("📊 Poll feature coming soon!"); }
+        function insertEmoji() { const t = document.querySelector('textarea[name="content"]'); if(t) t.value += " 😀 "; t?.focus(); }
 
         function switchAuthTab(n) {
             const loginDiv = document.getElementById('auth-login');
             const signupDiv = document.getElementById('auth-signup');
             const loginTab = document.getElementById('tab-login');
             const signupTab = document.getElementById('tab-signup');
-            
             if (n === 0) {
-                loginDiv.classList.remove('hidden');
-                signupDiv.classList.add('hidden');
+                loginDiv.classList.remove('hidden'); signupDiv.classList.add('hidden');
                 loginTab.classList.add('border-b-2', 'border-[#1d9bf0]', 'text-[#1d9bf0]');
                 signupTab.classList.remove('border-b-2', 'border-[#1d9bf0]', 'text-[#1d9bf0]');
-                signupTab.classList.add('text-slate-400');
             } else {
-                loginDiv.classList.add('hidden');
-                signupDiv.classList.remove('hidden');
+                loginDiv.classList.add('hidden'); signupDiv.classList.remove('hidden');
                 signupTab.classList.add('border-b-2', 'border-[#1d9bf0]', 'text-[#1d9bf0]');
                 loginTab.classList.remove('border-b-2', 'border-[#1d9bf0]', 'text-[#1d9bf0]');
-                loginTab.classList.add('text-slate-400');
             }
         }
 
         function toggleFollow(btn) {
-            if (btn.textContent.includes('Follow')) {
-                btn.innerHTML = 'Following ✓';
-                btn.classList.add('!bg-emerald-600');
-            } else {
-                btn.textContent = 'Follow';
-                btn.classList.remove('!bg-emerald-600');
-            }
+            if (btn.textContent.includes('Follow')) { btn.innerHTML = 'Following ✓'; btn.classList.add('!bg-emerald-600'); }
+            else { btn.textContent = 'Follow'; btn.classList.remove('!bg-emerald-600'); }
         }
 
-        function attachMedia() {
-            const url = prompt("📸 Paste your image URL:");
-            if (url) {
-                const input = document.querySelector('input[name="image_url"]');
-                if(input) input.value = url;
-            }
-        }
+        function attachMedia() { const url = prompt("📸 Paste your image URL:"); if(url) document.querySelector('input[name="image_url"]').value = url; }
     </script>
 </body>
 </html>
