@@ -2,79 +2,197 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
     <title>News Feed - metropages</title>
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .metro-brand { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            font-weight: 900; 
-            letter-spacing: -2.5px; 
-            text-transform: lowercase;
-        }
-        .news-card:hover {
-            transform: translateY(-2px);
-            transition: all 0.3s ease;
-        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .news-card { animation: fadeIn 0.5s ease-out; }
+        .metro-brand { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-weight: 900; letter-spacing: -2.5px; text-transform: lowercase; }
+        .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
     </style>
 </head>
-<body class="bg-slate-50">
-    <div class="max-w-4xl mx-auto p-6">
-        <!-- Header -->
-        <div class="flex justify-between items-center mb-8">
-            <div>
-                <h1 class="metro-brand text-3xl text-[#1d9bf0]">metropages</h1>
-                <p class="text-slate-500">Latest News & Updates</p>
+<body class="bg-gradient-to-br from-slate-50 to-slate-100">
+    <div class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 py-3">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="metro-brand text-2xl text-[#1d9bf0]">metropages</h1>
+                    <p class="text-slate-500 text-xs hidden sm:block">Latest News & Updates</p>
+                </div>
+                <div class="flex gap-2">
+                    <a href="/" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-full transition flex items-center gap-1 text-sm"><span>🏠</span> <span class="hidden sm:inline">Back</span></a>
+                    {{if .IsAdmin}}<button onclick="openAddNewsModal()" class="bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white px-3 py-1.5 rounded-full transition flex items-center gap-1 text-sm shadow-md"><span>➕</span> <span class="hidden sm:inline">Add News</span></button>{{end}}
+                </div>
             </div>
-            <a href="/" class="bg-[#1d9bf0] text-white px-6 py-2 rounded-full hover:bg-[#1a8cd8] transition">← Back to Home</a>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 py-4 sm:py-6">
+        <div class="mb-6 flex flex-wrap gap-2 justify-between items-center">
+            <div class="flex gap-2 flex-wrap">
+                <button onclick="filterNews('all')" id="filter-all" class="px-3 py-1.5 rounded-full bg-[#1d9bf0] text-white font-semibold text-xs transition shadow-sm">All</button>
+                <button onclick="filterNews('real-estate')" id="filter-real-estate" class="px-3 py-1.5 rounded-full bg-white text-slate-700 hover:bg-slate-100 font-semibold text-xs transition border border-slate-200">🏠 Real Estate</button>
+                <button onclick="filterNews('gig')" id="filter-gig" class="px-3 py-1.5 rounded-full bg-white text-slate-700 hover:bg-slate-100 font-semibold text-xs transition border border-slate-200">💼 Gig</button>
+            </div>
+            <div class="text-xs text-slate-500 bg-white px-2 py-1 rounded-full shadow-sm">📰 <span id="news-count">{{len .News}}</span></div>
         </div>
 
-        <!-- News Grid -->
-        <div class="space-y-4">
+        <div id="news-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {{range .News}}
-            <div class="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all news-card overflow-hidden">
-                <div class="p-6">
-                    <div class="flex items-start justify-between">
-                        <div class="flex-1">
-                            <div class="flex items-center gap-2 mb-3">
-                                <span class="inline-flex items-center px-3 py-1 text-xs font-bold rounded-full 
-                                    {{if eq .Category "real-estate"}}bg-blue-100 text-blue-700{{else}}bg-emerald-100 text-emerald-700{{end}}">
-                                    {{if eq .Category "real-estate"}}🏠 Real Estate{{else}}💼 Gig Economy{{end}}
-                                </span>
-                                <span class="text-xs text-slate-400">{{.Timestamp}}</span>
-                            </div>
-                            <h2 class="text-xl font-bold text-slate-900 mb-2">{{.Title}}</h2>
-                            <p class="text-slate-600 leading-relaxed">{{.Content}}</p>
+            <div class="news-card bg-white rounded-xl sm:rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden border border-slate-100 group" data-category="{{.Category}}">
+                <div class="h-1.5 {{if eq .Category "real-estate"}}bg-gradient-to-r from-blue-500 to-purple-600{{else}}bg-gradient-to-r from-emerald-500 to-teal-600{{end}}"></div>
+                <div class="p-4 sm:p-5">
+                    <div class="flex justify-between items-start mb-3">
+                        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold {{if eq .Category "real-estate"}}bg-blue-100 text-blue-700{{else}}bg-emerald-100 text-emerald-700{{end}}">{{if eq .Category "real-estate"}}🏠 Real Estate{{else}}💼 Gig Economy{{end}}</span>
+                        {{if $.IsAdmin}}
+                        <div class="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick='editNews({{.ID}}, {{printf "%q" .Title}}, {{printf "%q" .Content}}, {{printf "%q" .Category}})' class="text-blue-500 hover:text-blue-700 text-xs font-semibold bg-blue-50 px-2 py-1 rounded-lg">✏️ Edit</button>
+                            <button onclick="deleteNews({{.ID}})" class="text-red-500 hover:text-red-700 text-xs font-semibold bg-red-50 px-2 py-1 rounded-lg">🗑️ Del</button>
                         </div>
-                        <div class="ml-4">
-                            <button onclick="likeNews({{.ID}}, this)" 
-                                    class="flex items-center gap-2 text-slate-400 hover:text-red-500 transition">
-                                ❤️ <span class="text-sm font-medium">{{.Likes}}</span>
-                            </button>
-                        </div>
+                        {{end}}
+                    </div>
+                    <h2 class="text-lg sm:text-xl font-bold text-slate-900 mb-2 line-clamp-2 leading-tight group-hover:text-[#1d9bf0] transition-colors">{{.Title}}</h2>
+                    <p class="text-slate-600 text-sm leading-relaxed mb-3 line-clamp-3">{{.Content}}</p>
+                    <div class="flex items-center justify-between pt-3 border-t border-slate-100">
+                        <div class="flex items-center gap-1 text-xs text-slate-400"><span>🕒</span><span>{{.Timestamp}}</span></div>
+                        <button onclick="likeNews({{.ID}}, this)" class="like-button flex items-center gap-1 px-2 py-1 rounded-full bg-slate-50 hover:bg-red-50 text-slate-500 hover:text-red-500 transition-all text-sm">❤️ <span class="text-xs font-semibold like-count">{{.Likes}}</span></button>
                     </div>
                 </div>
             </div>
-            {{else}}
-            <div class="bg-white rounded-2xl p-8 text-center text-slate-400">
-                No news available
+            {{else}}<div class="col-span-full text-center py-12"><div class="text-5xl mb-3">📭</div><h3 class="text-lg font-semibold text-slate-600 mb-1">No news articles yet</h3><p class="text-slate-400 text-sm">Check back later for updates!</p></div>{{end}}
+        </div>
+    </div>
+
+    <!-- News Modal -->
+    <div id="newsModal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4" onclick="closeModalOnOutside(event)">
+        <div class="bg-white rounded-2xl max-w-md w-full mx-auto">
+            <div class="p-5 sm:p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="modalTitle" class="text-lg sm:text-xl font-bold text-slate-900">Add News</h3>
+                    <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
+                </div>
+                <form id="newsForm" method="POST">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Title</label>
+                            <input type="text" id="newsTitle" name="title" required class="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Content</label>
+                            <textarea id="newsContent" name="content" rows="4" required class="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Category</label>
+                            <select id="newsCategory" name="category" class="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                                <option value="real-estate">🏠 Real Estate</option>
+                                <option value="gig">💼 Gig Economy</option>
+                            </select>
+                        </div>
+                        <div class="flex gap-3 pt-2">
+                            <button type="button" onclick="closeModal()" class="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition text-sm">Cancel</button>
+                            <button type="submit" class="flex-1 bg-[#1d9bf0] text-white px-4 py-2 rounded-xl hover:bg-[#1a8cd8] transition font-semibold text-sm">Save</button>
+                        </div>
+                    </div>
+                </form>
             </div>
-            {{end}}
         </div>
     </div>
 
     <script>
+        function filterNews(category) {
+            const cards = document.querySelectorAll('#news-grid .news-card');
+            let visible = 0;
+            const allBtn = document.getElementById('filter-all');
+            const realEstateBtn = document.getElementById('filter-real-estate');
+            const gigBtn = document.getElementById('filter-gig');
+            
+            allBtn.className = 'px-3 py-1.5 rounded-full bg-white text-slate-700 hover:bg-slate-100 font-semibold text-xs transition border border-slate-200';
+            realEstateBtn.className = 'px-3 py-1.5 rounded-full bg-white text-slate-700 hover:bg-slate-100 font-semibold text-xs transition border border-slate-200';
+            gigBtn.className = 'px-3 py-1.5 rounded-full bg-white text-slate-700 hover:bg-slate-100 font-semibold text-xs transition border border-slate-200';
+            
+            if (category === 'all') {
+                allBtn.className = 'px-3 py-1.5 rounded-full bg-[#1d9bf0] text-white font-semibold text-xs transition shadow-sm';
+                cards.forEach(card => {
+                    card.style.display = 'block';
+                    visible++;
+                });
+            } else {
+                document.getElementById(`filter-${category}`).className = 'px-3 py-1.5 rounded-full bg-[#1d9bf0] text-white font-semibold text-xs transition shadow-sm';
+                cards.forEach(card => {
+                    if (card.dataset.category === category) {
+                        card.style.display = 'block';
+                        visible++;
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            }
+            document.getElementById('news-count').textContent = visible;
+        }
+
         function likeNews(id, btn) {
             fetch('/news/like/' + id, { method: 'POST' })
                 .then(res => res.text())
                 .then(likes => {
-                    const span = btn.querySelector('span');
+                    const span = btn.querySelector('.like-count');
                     if (span) span.textContent = likes;
                     btn.classList.add('text-red-500');
                 })
                 .catch(err => console.error(err));
         }
+
+        let currentEditId = null;
+
+        function openAddNewsModal() {
+            currentEditId = null;
+            document.getElementById('modalTitle').textContent = 'Add News';
+            document.getElementById('newsTitle').value = '';
+            document.getElementById('newsContent').value = '';
+            document.getElementById('newsCategory').value = 'real-estate';
+            document.getElementById('newsForm').action = '/admin/news/add';
+            document.getElementById('newsModal').classList.remove('hidden');
+            document.getElementById('newsModal').classList.add('flex');
+        }
+
+        function editNews(id, title, content, category) {
+            currentEditId = id;
+            document.getElementById('modalTitle').textContent = 'Edit News';
+            document.getElementById('newsTitle').value = title;
+            document.getElementById('newsContent').value = content;
+            document.getElementById('newsCategory').value = category;
+            document.getElementById('newsForm').action = '/admin/news/edit/' + id;
+            document.getElementById('newsModal').classList.remove('hidden');
+            document.getElementById('newsModal').classList.add('flex');
+        }
+
+        function deleteNews(id) {
+            if (confirm('Delete this news article?')) {
+                fetch('/admin/news/delete/' + id, { method: 'POST' })
+                    .then(() => location.reload())
+                    .catch(err => alert('Error deleting news'));
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('newsModal').classList.add('hidden');
+            document.getElementById('newsModal').classList.remove('flex');
+        }
+
+        function closeModalOnOutside(event) {
+            if (event.target === document.getElementById('newsModal')) {
+                closeModal();
+            }
+        }
+
+        document.getElementById('newsForm')?.addEventListener('submit', function(e) {
+            e.preventDefault();
+            fetch(this.action, { method: 'POST', body: new FormData(this) })
+                .then(() => location.reload())
+                .catch(err => alert('Error saving news'));
+        });
     </script>
 </body>
 </html>
