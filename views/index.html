@@ -259,7 +259,7 @@
                                     {{end}}
 
                                     {{if eq .Category "Gig"}}
-                                    <button onclick="openApplyModal({{.ID}}, '{{.Content}}')" class="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition active:scale-95">📝 Apply Now</button>
+                                    <button onclick="openApplyModal({{.ID}})" class="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition active:scale-95">📝 Apply Now</button>
                                     {{end}}
 
                                     <a href="https://wa.me/919999999999?text=Interested%20in%20listing%20ID%20{{.ID}}" target="_blank" class="flex items-center gap-1.5 bg-[#25D366] hover:bg-[#128C7E] text-white text-xs font-semibold px-3 py-1.5 rounded-full transition active:scale-95">📲 WhatsApp</a>
@@ -331,25 +331,29 @@
                 <h3 class="text-lg font-bold text-slate-900">Apply for this Position</h3>
                 <button onclick="closeApplyModal()" class="text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
             </div>
-            <form id="applyForm" class="p-4 space-y-4">
-                <input type="hidden" id="applyPostId" name="post_id">
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Cover Letter / Why you're a good fit *</label>
-                    <textarea id="coverLetter" name="cover_letter" rows="5" required placeholder="Tell the employer about your experience, skills, and why you're interested..." class="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Resume/CV Link (Optional)</label>
-                    <input type="url" id="resumeUrl" name="resume_url" placeholder="Google Drive, Dropbox, or LinkedIn URL" class="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
-                </div>
-                <div class="bg-slate-50 rounded-xl p-3 text-sm text-slate-600">
-                    <p class="font-semibold mb-1">📌 What happens next?</p>
-                    <p class="text-xs">The employer will review your application and contact you via WhatsApp or email.</p>
-                </div>
-                <div class="flex gap-3 pt-2">
-                    <button type="button" onclick="closeApplyModal()" class="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition">Cancel</button>
-                    <button type="submit" class="flex-1 bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition font-semibold">Submit Application</button>
-                </div>
-            </form>
+            <div class="p-4">
+                <form id="applyForm" onsubmit="submitApplication(event)">
+                    <input type="hidden" id="applyPostId" name="post_id">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Cover Letter / Why you're a good fit *</label>
+                            <textarea id="coverLetter" name="cover_letter" rows="5" required placeholder="Tell the employer about your experience, skills, and why you're interested..." class="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Resume/CV Link (Optional)</label>
+                            <input type="url" id="resumeUrl" name="resume_url" placeholder="Google Drive, Dropbox, or LinkedIn URL" class="w-full px-4 py-2 text-sm border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div class="bg-slate-50 rounded-xl p-3 text-sm text-slate-600">
+                            <p class="font-semibold mb-1">📌 What happens next?</p>
+                            <p class="text-xs">The employer will review your application and contact you via WhatsApp or email.</p>
+                        </div>
+                        <div class="flex gap-3 pt-2">
+                            <button type="button" onclick="closeApplyModal()" class="flex-1 px-4 py-2 border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50 transition">Cancel</button>
+                            <button type="submit" class="flex-1 bg-emerald-600 text-white px-4 py-2 rounded-xl hover:bg-emerald-700 transition font-semibold">Submit Application</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -359,7 +363,7 @@
     </div>
 
     <script>
-        let currentPostId = null;
+        let currentApplyPostId = null;
 
         function toggleMobileMenu() {
             const sidebar = document.getElementById('sidebar');
@@ -399,33 +403,69 @@
             }
         }
 
-        function openApplyModal(postId, title) {
-            currentPostId = postId;
+        function openApplyModal(postId) {
+            currentApplyPostId = postId;
             document.getElementById('applyPostId').value = postId;
             document.getElementById('coverLetter').value = '';
             document.getElementById('resumeUrl').value = '';
             document.getElementById('applyModal').classList.remove('hidden');
             document.getElementById('applyModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
         }
 
         function closeApplyModal() {
             document.getElementById('applyModal').classList.add('hidden');
             document.getElementById('applyModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
         }
 
         function closeApplyModalOnOutside(event) {
-            if (event.target === document.getElementById('applyModal')) closeApplyModal();
+            if (event.target === document.getElementById('applyModal')) {
+                closeApplyModal();
+            }
         }
 
-        document.getElementById('applyForm')?.addEventListener('submit', function(e) {
-            e.preventDefault();
+        function submitApplication(event) {
+            event.preventDefault();
+            
+            const postId = currentApplyPostId;
+            const coverLetter = document.getElementById('coverLetter').value;
+            const resumeUrl = document.getElementById('resumeUrl').value;
+            
+            if (!coverLetter.trim()) {
+                alert('Please tell us why you are a good fit for this position');
+                return;
+            }
+            
+            const submitBtn = event.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerText;
+            submitBtn.innerText = 'Submitting...';
+            submitBtn.disabled = true;
+            
             const formData = new FormData();
-            formData.append('cover_letter', document.getElementById('coverLetter').value);
-            formData.append('resume_url', document.getElementById('resumeUrl').value);
-            fetch('/apply/' + currentPostId, { method: 'POST', body: formData })
-                .then(res => res.json())
-                .then(data => { alert(data.message); if (data.success) closeApplyModal(); });
-        });
+            formData.append('cover_letter', coverLetter);
+            formData.append('resume_url', resumeUrl);
+            
+            fetch('/apply/' + postId, {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(data.message);
+                if (data.success) {
+                    closeApplyModal();
+                }
+            })
+            .catch(err => {
+                console.error('Error:', err);
+                alert('Error submitting application. Please try again.');
+            })
+            .finally(() => {
+                submitBtn.innerText = originalText;
+                submitBtn.disabled = false;
+            });
+        }
 
         function showLoginPrompt() { alert("🔑 Please login or sign up!"); }
         function addPoll() { alert("📊 Poll feature coming soon!"); }
