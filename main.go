@@ -80,6 +80,19 @@ type PasswordReset struct {
 	Used      bool
 }
 
+type Application struct {
+	ID             int
+	PostID         int
+	ApplicantID    int
+	ApplicantName  string
+	ApplicantEmail string
+	ApplicantPhone string
+	CoverLetter    string
+	ResumeURL      string
+	Status         string
+	CreatedAt      time.Time
+}
+
 var db *sql.DB
 
 func initDB() {
@@ -182,6 +195,20 @@ CREATE TABLE IF NOT EXISTS password_resets (
     expires_at DATETIME,
     used BOOLEAN DEFAULT FALSE,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS applications (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id INTEGER,
+    applicant_id INTEGER,
+    applicant_name TEXT,
+    applicant_email TEXT,
+    applicant_phone TEXT,
+    cover_letter TEXT,
+    resume_url TEXT,
+    status TEXT DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(post_id) REFERENCES posts(id)
 );
 `
 
@@ -1055,6 +1082,47 @@ func main() {
 			return c.Status(500).SendString("Error fetching likes")
 		}
 		return c.SendString(fmt.Sprintf(`<button hx-post="/like/%s" hx-swap="outerHTML" class="flex items-center gap-1.5 text-slate-400 hover:text-red-500 transition-all active:scale-110">❤️ <span class="text-sm font-medium">%d</span></button>`, id, likes))
+	})
+
+	// ====================== APPLY FOR GIG ======================
+	app.Post("/apply/:id", func(c *fiber.Ctx) error {
+		currentUser := getCurrentUser(c)
+		if currentUser == nil {
+			return c.Status(401).JSON(fiber.Map{
+				"success": false,
+				"message": "Please login to apply",
+			})
+		}
+
+		postID := c.Params("id")
+		coverLetter := c.FormValue("cover_letter")
+		resumeURL := c.FormValue("resume_url")
+
+		if coverLetter == "" {
+			return c.Status(400).JSON(fiber.Map{
+				"success": false,
+				"message": "Please tell us why you're a good fit",
+			})
+		}
+
+		// Save application to database
+		_, err := db.Exec(`
+			INSERT INTO applications (post_id, applicant_id, applicant_name, applicant_email, applicant_phone, cover_letter, resume_url)
+			VALUES (?, ?, ?, ?, ?, ?, ?)`,
+			postID, currentUser.ID, currentUser.Username, currentUser.Email, currentUser.Phone, coverLetter, resumeURL)
+
+		if err != nil {
+			log.Println("Error saving application:", err)
+			return c.Status(500).JSON(fiber.Map{
+				"success": false,
+				"message": "Failed to submit application",
+			})
+		}
+
+		return c.JSON(fiber.Map{
+			"success": true,
+			"message": "✅ Application submitted successfully! The employer will contact you.",
+		})
 	})
 
 	// ====================== ADMIN DASHBOARD ======================
